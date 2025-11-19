@@ -30,7 +30,7 @@ export class ClaudeService {
     const prompt = this.buildAnalysisPrompt(content, title);
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       temperature: 0.3,
       system: this.getSystemPrompt(),
@@ -89,7 +89,7 @@ Return your analysis in JSON format:
 }`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       temperature: 0.3,
       system: 'You are a psychological pattern recognition expert. Analyze journal entries to identify meaningful patterns.',
