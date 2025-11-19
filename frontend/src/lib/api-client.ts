@@ -27,9 +27,21 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Only redirect on 401 if we're not already on auth pages and have a token
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      const currentPath = window.location.pathname;
+      const isAuthPage = currentPath === '/login' || currentPath === '/register';
+      const hasToken = localStorage.getItem('token');
+      
+      // Remove invalid token
+      if (hasToken) {
+        localStorage.removeItem('token');
+      }
+      
+      // Only redirect if we're not already on an auth page
+      if (!isAuthPage && hasToken) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

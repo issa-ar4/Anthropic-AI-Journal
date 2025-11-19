@@ -23,7 +23,20 @@ export default function RegisterPage() {
       setAuth(data.user, data.token);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create account. Please try again.');
+      console.error('Registration error:', err);
+      
+      // Handle different types of errors
+      if (err.response) {
+        // Server responded with error status
+        const errorMessage = err.response.data?.error || 'Failed to create account';
+        setError(errorMessage);
+      } else if (err.request) {
+        // Request made but no response received
+        setError('Unable to connect to server. Please check your internet connection.');
+      } else {
+        // Something else went wrong
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
