@@ -68,7 +68,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ nodes, onNodeClick }) => {
 
             {/* Entries */}
             <div className="space-y-6 pl-16">
-              {monthNodes.map((node, index) => (
+              {monthNodes.map((node) => (
                 <div key={node.id} className="relative">
                   {/* Timeline Dot */}
                   <div

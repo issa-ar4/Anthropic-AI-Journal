@@ -72,22 +72,30 @@ export class CanvasService {
 
         // 2. Add emotion nodes from analysis
         if (includeEmotions && analysis) {
-          const emotions = analysis.emotions as any[];
+          const emotions = analysis.emotions as any;
           
-          for (const emotion of emotions) {
-            const emotionId = `emotion-${emotion.name.toLowerCase()}`;
+          // Handle both array of strings and array of objects
+          const emotionList = Array.isArray(emotions) 
+            ? emotions.map(e => typeof e === 'string' ? { name: e, intensity: 50, category: 'neutral' } : e)
+            : [];
+          
+          for (const emotion of emotionList) {
+            const emotionName = typeof emotion === 'string' ? emotion : emotion.name;
+            if (!emotionName) continue;
+            
+            const emotionId = `emotion-${emotionName.toLowerCase()}`;
             
             // Create or get emotion node
             if (!nodeMap.has(emotionId)) {
               const emotionNode: CanvasNode = {
                 id: emotionId,
                 type: 'emotion',
-                label: emotion.name,
+                label: emotionName,
                 metadata: {
-                  intensity: emotion.intensity,
-                  category: emotion.category,
+                  intensity: emotion.intensity || 50,
+                  category: emotion.category || 'neutral',
                   frequency: 1,
-                  color: this.getEmotionColor(emotion.category),
+                  color: this.getEmotionColor(emotion.category || 'neutral'),
                   size: 1,
                 },
                 createdAt: entry.createdAt,
@@ -103,12 +111,13 @@ export class CanvasService {
             }
 
             // Create edge
+            const intensity = typeof emotion === 'object' ? emotion.intensity : 50;
             edges.push({
               id: `${node.id}-${emotionId}`,
               sourceId: node.id,
               targetId: emotionId,
               type: 'contains',
-              weight: emotion.intensity / 100,
+              weight: (intensity || 50) / 100,
               createdAt: entry.createdAt,
             });
           }
@@ -116,9 +125,10 @@ export class CanvasService {
 
         // 3. Add theme nodes
         if (includeThemes && analysis) {
-          const themes = analysis.keyThemes as string[];
+          const themes = Array.isArray(analysis.keyThemes) ? analysis.keyThemes as string[] : [];
           
           for (const theme of themes) {
+            if (!theme || typeof theme !== 'string') continue;
             const themeId = `theme-${theme.toLowerCase().replace(/\s+/g, '-')}`;
             
             if (!nodeMap.has(themeId)) {
@@ -155,19 +165,25 @@ export class CanvasService {
 
         // 4. Add distortion nodes
         if (includeDistortions && analysis) {
-          const distortions = analysis.cognitiveDistortions as any[];
+          const distortions = Array.isArray(analysis.cognitiveDistortions) 
+            ? analysis.cognitiveDistortions as any[]
+            : [];
           
           for (const distortion of distortions) {
-            const distortionId = `distortion-${distortion.type.toLowerCase().replace(/\s+/g, '-')}`;
+            // Handle both string and object formats
+            const distortionType = typeof distortion === 'string' ? distortion : distortion.type;
+            if (!distortionType) continue;
+            
+            const distortionId = `distortion-${distortionType.toLowerCase().replace(/\s+/g, '-')}`;
             
             if (!nodeMap.has(distortionId)) {
               const distortionNode: CanvasNode = {
                 id: distortionId,
                 type: 'distortion',
-                label: distortion.type,
-                description: distortion.explanation,
+                label: distortionType,
+                description: typeof distortion === 'object' ? distortion.explanation : undefined,
                 metadata: {
-                  severity: distortion.severity,
+                  severity: typeof distortion === 'object' ? distortion.severity : 'medium',
                   frequency: 1,
                   color: '#f59e0b',
                   size: 1,
@@ -183,9 +199,10 @@ export class CanvasService {
               existingNode.metadata.size = 1 + (existingNode.metadata.frequency * 0.2);
             }
 
+            const severity = typeof distortion === 'object' ? distortion.severity : 'medium';
             const severityWeight = 
-              distortion.severity === 'high' ? 0.9 :
-              distortion.severity === 'medium' ? 0.6 : 0.3;
+              severity === 'high' ? 0.9 :
+              severity === 'medium' ? 0.6 : 0.3;
 
             edges.push({
               id: `${node.id}-${distortionId}`,

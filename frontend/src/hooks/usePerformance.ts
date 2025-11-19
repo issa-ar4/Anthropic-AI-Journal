@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 /**
  * Hook for debouncing values
@@ -91,5 +91,3 @@ export const useBreakpoint = () => {
 
   return { isMobile, isTablet, isDesktop };
 };
-
-import { useState } from 'react';

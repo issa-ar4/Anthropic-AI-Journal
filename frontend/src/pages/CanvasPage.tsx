@@ -5,7 +5,7 @@ import Canvas from '../components/canvas/Canvas';
 import NodeDetailPanel from '../components/canvas/NodeDetailPanel';
 import CanvasControls from '../components/canvas/CanvasControls';
 import TimelineView from '../components/canvas/TimelineView';
-import { D3Node, CanvasGraph, NodeType, EdgeType } from '../types/canvas.types';
+import { D3Node, CanvasGraph, NodeType } from '../types/canvas.types';
 import { Loader2, Download, RefreshCw, BarChart3, Network } from 'lucide-react';
 
 const CanvasPage: React.FC = () => {
@@ -13,7 +13,6 @@ const CanvasPage: React.FC = () => {
   const [filteredGraph, setFilteredGraph] = useState<CanvasGraph | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNodeTypes, setSelectedNodeTypes] = useState<NodeType[]>([]);
-  const [selectedEdgeTypes, setSelectedEdgeTypes] = useState<EdgeType[]>([]);
   const [timeRange, setTimeRange] = useState(30);
   const [viewMode, setViewMode] = useState<'graph' | 'timeline'>('graph');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -76,22 +75,12 @@ const CanvasPage: React.FC = () => {
       });
       await canvasService.saveCanvas(newGraph);
       refetch();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to regenerate canvas:', error);
+      const errorMessage = error?.response?.data?.error || error?.message || 'Failed to generate canvas';
+      alert(errorMessage + '\n\nPlease create journal entries and analyze them first.');
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  // Handle save canvas
-  const handleSave = async () => {
-    if (!graph) return;
-    try {
-      await canvasService.saveCanvas(graph);
-      alert('Canvas saved successfully!');
-    } catch (error) {
-      console.error('Failed to save canvas:', error);
-      alert('Failed to save canvas');
     }
   };
 
@@ -185,16 +174,37 @@ const CanvasPage: React.FC = () => {
         {/* Main Content */}
         {!graph || !filteredGraph ? (
           <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <p className="text-gray-600 mb-4">
-              No canvas data available. Generate your first cognitive canvas!
-            </p>
-            <button
-              onClick={handleRegenerate}
-              disabled={isGenerating}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {isGenerating ? 'Generating...' : 'Generate Canvas'}
-            </button>
+            <div className="max-w-md mx-auto">
+              <Network className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                No Canvas Available
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Your cognitive canvas visualizes connections between your journal entries, emotions, themes, and patterns.
+                {!canvasData?.graph && (
+                  <span className="block mt-2 font-medium">
+                    Create journal entries and analyze them to generate your canvas.
+                  </span>
+                )}
+              </p>
+              <button
+                onClick={handleRegenerate}
+                disabled={isGenerating}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Generating Canvas...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-5 h-5" />
+                    Generate Canvas
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
@@ -203,7 +213,7 @@ const CanvasPage: React.FC = () => {
               <div className="lg:sticky lg:top-4 lg:self-start">
                 <CanvasControls
                   selectedNodeTypes={selectedNodeTypes}
-                  selectedEdgeTypes={selectedEdgeTypes}
+                  selectedEdgeTypes={[]}
                   searchQuery={searchQuery}
                   timeRange={timeRange}
                   onFilterChange={({ nodeTypes, searchQuery: query }) => {

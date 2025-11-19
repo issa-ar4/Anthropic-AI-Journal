@@ -2,6 +2,8 @@
  * Removes markdown formatting from text to make it more conversational
  */
 export function stripMarkdown(text: string): string {
+  if (!text) return '';
+  
   return text
     // Remove headers (# ## ###)
     .replace(/^#{1,6}\s+/gm, '')

@@ -40,7 +40,20 @@ export const generateCanvas = async (
       minConnectionWeight: 0.1,
     });
 
-    res.json({ graph });
+    // Check if we have enough data
+    if (graph.nodes.length === 0) {
+      throw new AppError(
+        'Not enough data to generate canvas. Please create journal entries and analyze them first.',
+        400
+      );
+    }
+
+    res.json({ 
+      graph,
+      message: graph.nodes.length < 5 
+        ? 'Canvas generated with limited data. Create more journal entries for richer visualization.'
+        : undefined
+    });
   } catch (error) {
     next(error);
   }
@@ -87,17 +100,34 @@ export const loadCanvas = async (
 
     if (!graph) {
       // Generate new graph if none exists
-      const newGraph = await canvasService.generateGraph({
-        userId,
-        includeEntries: true,
-        includeEmotions: true,
-        includeThemes: true,
-        includePatterns: true,
-        includeDistortions: true,
-        maxNodes: 100,
-      });
-      
-      return res.json({ graph: newGraph, generated: true });
+      try {
+        const newGraph = await canvasService.generateGraph({
+          userId,
+          includeEntries: true,
+          includeEmotions: true,
+          includeThemes: true,
+          includePatterns: true,
+          includeDistortions: true,
+          maxNodes: 100,
+        });
+        
+        if (newGraph.nodes.length === 0) {
+          return res.json({ 
+            graph: null, 
+            generated: false,
+            message: 'No data available. Create journal entries to generate your canvas.'
+          });
+        }
+        
+        return res.json({ graph: newGraph, generated: true });
+      } catch (genError) {
+        console.error('Canvas generation error:', genError);
+        return res.json({ 
+          graph: null, 
+          generated: false,
+          message: 'Unable to generate canvas. Please ensure you have journal entries with analyses.'
+        });
+      }
     }
 
     return res.json({ graph, generated: false });
