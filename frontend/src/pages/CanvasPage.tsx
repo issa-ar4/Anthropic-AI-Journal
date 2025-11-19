@@ -5,8 +5,10 @@ import Canvas from '../components/canvas/Canvas';
 import NodeDetailPanel from '../components/canvas/NodeDetailPanel';
 import CanvasControls from '../components/canvas/CanvasControls';
 import TimelineView from '../components/canvas/TimelineView';
+import CanvasInsights from '../components/canvas/CanvasInsights';
+import CanvasGuide from '../components/canvas/CanvasGuide';
 import { D3Node, CanvasGraph, NodeType } from '../types/canvas.types';
-import { Loader2, Download, RefreshCw, BarChart3, Network } from 'lucide-react';
+import { Loader2, Download, RefreshCw, BarChart3, Network, HelpCircle, Lightbulb } from 'lucide-react';
 
 const CanvasPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
@@ -16,6 +18,8 @@ const CanvasPage: React.FC = () => {
   const [timeRange, setTimeRange] = useState(30);
   const [viewMode, setViewMode] = useState<'graph' | 'timeline'>('graph');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showInsights, setShowInsights] = useState(true);
 
   // Load canvas data
   const {

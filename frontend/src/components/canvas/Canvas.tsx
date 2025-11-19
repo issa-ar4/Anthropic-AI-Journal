@@ -69,21 +69,24 @@ const Canvas: React.FC<CanvasProps> = ({
       target: e.targetId,
     }));
 
-    // Create force simulation
+    // Create force simulation with stronger separation
     const simulation = d3.forceSimulation<D3Node>(nodes)
       .force('link', d3.forceLink<D3Node, D3Edge>(edges)
         .id(d => d.id)
-        .distance(d => 100 + (1 - d.weight) * 100)
-        .strength(d => d.weight)
+        .distance(d => 150 + (1 - d.weight) * 150)
+        .strength(d => d.weight * 0.5)
       )
       .force('charge', d3.forceManyBody()
-        .strength(-300)
-        .distanceMax(400)
+        .strength(-800)
+        .distanceMax(600)
       )
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide<D3Node>()
-        .radius(d => ((d.metadata?.size as number) || 1) * 20 + 10)
-      );
+        .radius(d => ((d.metadata?.size as number) || 1) * 25 + 15)
+        .strength(1)
+      )
+      .force('x', d3.forceX(width / 2).strength(0.05))
+      .force('y', d3.forceY(height / 2).strength(0.05));
 
     // Create arrow markers for directed edges
     svg.append('defs').selectAll('marker')
@@ -257,38 +260,38 @@ const Canvas: React.FC<CanvasProps> = ({
         <button
           onClick={() => {
             const svg = d3.select(svgRef.current);
-            svg.transition().call(
+            svg.transition().duration(300).call(
               d3.zoom<SVGSVGElement, unknown>().scaleBy as any,
               1.3
             );
           }}
-          className="p-2 bg-white border border-gray-300 rounded-lg shadow hover:bg-gray-50"
+          className="p-2 bg-white border border-gray-300 rounded-lg shadow hover:bg-gray-50 transition-colors"
           title="Zoom In"
         >
-          <span className="text-xl">+</span>
+          <span className="text-xl font-bold">+</span>
         </button>
         <button
           onClick={() => {
             const svg = d3.select(svgRef.current);
-            svg.transition().call(
+            svg.transition().duration(300).call(
               d3.zoom<SVGSVGElement, unknown>().scaleBy as any,
               0.7
             );
           }}
-          className="p-2 bg-white border border-gray-300 rounded-lg shadow hover:bg-gray-50"
+          className="p-2 bg-white border border-gray-300 rounded-lg shadow hover:bg-gray-50 transition-colors"
           title="Zoom Out"
         >
-          <span className="text-xl">−</span>
+          <span className="text-xl font-bold">−</span>
         </button>
         <button
           onClick={() => {
             const svg = d3.select(svgRef.current);
-            svg.transition().call(
+            svg.transition().duration(500).call(
               d3.zoom<SVGSVGElement, unknown>().transform as any,
-              d3.zoomIdentity
+              d3.zoomIdentity.translate(width / 2, height / 2).scale(1).translate(-width / 2, -height / 2)
             );
           }}
-          className="p-2 bg-white border border-gray-300 rounded-lg shadow hover:bg-gray-50"
+          className="p-2 bg-white border border-gray-300 rounded-lg shadow hover:bg-gray-50 transition-colors"
           title="Reset View"
         >
           <span className="text-xl">⟲</span>
