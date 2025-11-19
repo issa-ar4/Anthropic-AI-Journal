@@ -34,18 +34,23 @@ export default function InsightsPage() {
   if (!hasData) {
     return (
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Insights</h1>
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <Brain className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Insights</h1>
+          <p className="text-gray-600 text-lg">AI-powered analysis of your mental patterns</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-xl p-16 text-center border border-gray-100">
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Brain className="w-10 h-10 text-purple-600" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">
             No insights yet
           </h3>
-          <p className="text-gray-600 mb-6">
-            Create journal entries and analyze them to see patterns and trends
+          <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">
+            Create journal entries and analyze them to see patterns and trends in your mental wellness journey
           </p>
           <a
             href="/journal"
-            className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-2xl hover:scale-105 transition-all font-semibold text-lg"
           >
             Go to Journal
           </a>
@@ -55,48 +60,48 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Insights</h1>
-        <p className="text-gray-600">
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-10">
+        <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Insights</h1>
+        <p className="text-gray-600 text-lg">
           AI-powered analysis of your journal entries over the past 30 days
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
         {/* Stats Cards */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-indigo-100 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-indigo-600" />
+        <div className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 border border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl group-hover:scale-110 transition-transform">
+              <TrendingUp className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Entries Analyzed</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-600 font-medium mb-1">Entries Analyzed</p>
+              <p className="text-3xl font-bold text-gray-900">
                 {insights?.emotionalTrends.length || 0}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Brain className="w-5 h-5 text-purple-600" />
+        <div className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 border border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+              <Brain className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Patterns Detected</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-gray-600 font-medium mb-1">Patterns Detected</p>
+              <p className="text-3xl font-bold text-gray-900">
                 {patternsData?.patterns.length || 0}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-amber-100 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
+        <div className="group bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 border border-gray-100">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl group-hover:scale-110 transition-transform">
+              <AlertCircle className="w-6 h-6 text-white" />
             </div>
             <div>
               <p className="text-sm text-gray-600">Common Patterns</p>
@@ -113,9 +118,11 @@ export default function InsightsPage() {
 
       {/* Patterns */}
       {patternsData && patternsData.patterns.length > 0 && (
-        <div className="mt-8 bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-            <Brain className="w-6 h-6 text-purple-600" />
+        <div className="mt-10 bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
+              <Brain className="w-6 h-6 text-white" />
+            </div>
             Detected Patterns
           </h2>
           <PatternList patterns={patternsData.patterns} />

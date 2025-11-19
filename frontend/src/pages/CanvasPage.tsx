@@ -101,71 +101,73 @@ const CanvasPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading your cognitive canvas...</p>
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
+          </div>
+          <p className="text-lg text-gray-600 font-medium">Loading your cognitive canvas...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="max-w-[1600px] mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="mb-10">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
             Cognitive Canvas
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-lg">
             Interactive visualization of your journal entries, emotions, themes, and patterns
           </p>
         </div>
 
         {/* Toolbar */}
-        <div className="mb-6 flex items-center justify-between gap-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-          <div className="flex items-center gap-2">
+        <div className="mb-8 flex items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-lg">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setViewMode('graph')}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+              className={`px-5 py-3 rounded-xl flex items-center gap-2 transition-all font-semibold ${
                 viewMode === 'graph'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg scale-105'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105'
               }`}
             >
-              <Network size={18} />
+              <Network size={20} />
               Graph View
             </button>
             <button
               onClick={() => setViewMode('timeline')}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+              className={`px-5 py-3 rounded-xl flex items-center gap-2 transition-all font-semibold ${
                 viewMode === 'timeline'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg scale-105'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105'
               }`}
             >
-              <BarChart3 size={18} />
+              <BarChart3 size={20} />
               Timeline View
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={handleRegenerate}
               disabled={isGenerating}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-5 py-3 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-purple-300 hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all font-semibold"
             >
               {isGenerating ? (
-                <Loader2 size={18} className="animate-spin" />
+                <Loader2 size={20} className="animate-spin" />
               ) : (
-                <RefreshCw size={18} />
+                <RefreshCw size={20} />
               )}
               {isGenerating ? 'Generating...' : 'Regenerate'}
             </button>
             <button
               onClick={handleExport}
-              className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+              className="px-5 py-3 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-blue-300 hover:scale-105 flex items-center gap-2 transition-all font-semibold"
             >
-              <Download size={18} />
+              <Download size={20} />
               Export
             </button>
           </div>
@@ -173,16 +175,18 @@ const CanvasPage: React.FC = () => {
 
         {/* Main Content */}
         {!graph || !filteredGraph ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <div className="max-w-md mx-auto">
-              <Network className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="text-center py-20 bg-white rounded-2xl border border-gray-200 shadow-xl">
+            <div className="max-w-2xl mx-auto px-6">
+              <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-8">
+                <Network className="w-12 h-12 text-purple-600" />
+              </div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">
                 No Canvas Available
               </h3>
-              <p className="text-gray-600 mb-6">
+              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
                 Your cognitive canvas visualizes connections between your journal entries, emotions, themes, and patterns.
                 {!canvasData?.graph && (
-                  <span className="block mt-2 font-medium">
+                  <span className="block mt-3 font-semibold text-purple-600">
                     Create journal entries and analyze them to generate your canvas.
                   </span>
                 )}
@@ -190,7 +194,7 @@ const CanvasPage: React.FC = () => {
               <button
                 onClick={handleRegenerate}
                 disabled={isGenerating}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 inline-flex items-center gap-2 transition-all font-semibold text-lg"
               >
                 {isGenerating ? (
                   <>

@@ -19,57 +19,60 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-gray-200 z-50 shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <Brain className="w-6 h-6 text-indigo-600" />
-              <span className="text-xl font-bold hidden sm:inline">Cognitive Canvas</span>
-              <span className="text-xl font-bold sm:hidden">CC</span>
+            <Link to="/dashboard" className="flex items-center gap-2 group">
+              <div className="relative">
+                <Brain className="w-7 h-7 text-purple-600 group-hover:scale-110 transition-transform" />
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent hidden sm:inline">Cognitive Canvas</span>
+              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent sm:hidden">CC</span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-6">
+            <nav className="hidden lg:flex items-center gap-1">
               <Link
                 to="/dashboard"
-                className="text-gray-700 hover:text-gray-900 transition-colors"
+                className="px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all font-medium"
               >
                 Dashboard
               </Link>
               <Link
                 to="/root-cause"
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all font-medium"
               >
                 <MessageCircle className="w-4 h-4" />
-                Root Cause Analysis
+                Root Cause
               </Link>
               <Link
                 to="/journal"
-                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all font-medium"
               >
                 <BookOpen className="w-4 h-4" />
                 Journal
               </Link>
               <Link
                 to="/insights"
-                className="text-gray-700 hover:text-gray-900 transition-colors"
+                className="px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all font-medium"
               >
                 Insights
               </Link>
               <Link
                 to="/canvas"
-                className="text-gray-700 hover:text-gray-900 transition-colors"
+                className="px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all font-medium"
               >
                 Canvas
               </Link>
-              <div className="border-l pl-6 ml-2 flex items-center gap-4">
-                <span className="text-sm text-gray-600 hidden xl:inline">{user?.email}</span>
+              <div className="border-l border-gray-300 pl-4 ml-4 flex items-center gap-3">
+                <span className="text-sm text-gray-600 hidden xl:inline max-w-[150px] truncate">{user?.email}</span>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium"
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="hidden md:inline">Logout</span>
@@ -145,7 +148,7 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 sm:py-8">{children}</main>
+      <main className="container mx-auto px-4 py-6 sm:py-10 max-w-7xl">{children}</main>
     </div>
   );
 }

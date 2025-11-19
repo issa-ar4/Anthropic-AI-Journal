@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Calendar, Loader2, Sparkles, Edit2, Trash2, X, Check } from 'lucide-react';
+import { Plus, Calendar, Loader2, Sparkles, Edit2, Trash2, X, Check, BookOpen } from 'lucide-react';
 import { entryService } from '../services/entryService';
 import { analysisService } from '../services/analysisService';
 import { format } from 'date-fns';
@@ -139,28 +139,32 @@ export default function JournalPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Journal Entries</h1>
+    <div className="max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-10">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Journal Entries</h1>
+          <p className="text-gray-600 text-lg">Express your thoughts and feelings</p>
+        </div>
         <button
           onClick={() => setIsCreating(!isCreating)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all font-semibold"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           New Entry
         </button>
       </div>
 
       {/* Create Entry Form */}
       {isCreating && (
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-10 border border-gray-100">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900">Write New Entry</h2>
           <form onSubmit={handleSubmit}>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Title (optional)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
             />
             <textarea
               value={content}
@@ -169,27 +173,31 @@ export default function JournalPage() {
                 setContentWarning(null);
               }}
               placeholder="How are you feeling today? What's on your mind?"
-              rows={8}
+              rows={10}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none resize-none transition-all"
             />
             {contentWarning && (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
-                ⚠️ {contentWarning}
+              <div className="mb-4 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-xl text-amber-800">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <span>{contentWarning}</span>
+                </div>
               </div>
             )}
-            <div className="text-xs text-gray-500 mb-4">
-              {countWords(content)} words · Minimum {MIN_WORDS_FOR_ANALYSIS} words required for AI analysis
+            <div className="text-sm text-gray-500 mb-6 flex items-center gap-2">
+              <span className="font-semibold">{countWords(content)}</span> words · 
+              <span className="text-gray-400">Minimum {MIN_WORDS_FOR_ANALYSIS} words required for AI analysis</span>
             </div>
             <div className="flex gap-4">
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all font-semibold disabled:opacity-50 disabled:hover:scale-100"
               >
                 {createMutation.isPending ? (
                   <span className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     Saving...
                   </span>
                 ) : (
@@ -204,7 +212,7 @@ export default function JournalPage() {
                   setContent('');
                   setContentWarning(null);
                 }}
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="px-8 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-semibold"
               >
                 Cancel
               </button>
@@ -215,18 +223,21 @@ export default function JournalPage() {
 
       {/* Entries List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
         </div>
       ) : data?.entries.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-600 mb-4">No journal entries yet</p>
-          <p className="text-sm text-gray-500">Click "New Entry" to get started</p>
+        <div className="bg-white rounded-2xl shadow-xl p-16 text-center border border-gray-100">
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <BookOpen className="w-10 h-10 text-purple-600" />
+          </div>
+          <p className="text-xl font-semibold text-gray-900 mb-2">No journal entries yet</p>
+          <p className="text-gray-600">Click "New Entry" to start your journey</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {data?.entries.map((entry) => (
-            <div key={entry.id} className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+            <div key={entry.id} className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all p-8 border border-gray-100">
               {editingId === entry.id ? (
                 /* Edit Mode */
                 <form onSubmit={(e) => handleUpdateSubmit(e, entry.id)}>
@@ -295,17 +306,17 @@ export default function JournalPage() {
                       <Calendar className="w-4 h-4" />
                       {format(new Date(entry.createdAt), 'MMMM d, yyyy · h:mm a')}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       <button
                         onClick={() => handleEdit(entry)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 hover:scale-105 transition-all font-medium"
                       >
                         <Edit2 className="w-4 h-4" />
                         Edit
                       </button>
                       <button
                         onClick={() => handleDeleteClick(entry.id)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm bg-red-50 text-red-600 rounded-lg hover:bg-red-100 hover:scale-105 transition-all font-medium"
                       >
                         <Trash2 className="w-4 h-4" />
                         Delete
@@ -313,7 +324,7 @@ export default function JournalPage() {
                       <button
                         onClick={() => handleAnalyze(entry.id, entry.content)}
                         disabled={analyzingId === entry.id}
-                        className="flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2.5 text-sm bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100 font-medium"
                       >
                         {analyzingId === entry.id ? (
                           <>
