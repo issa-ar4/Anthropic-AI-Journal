@@ -1,0 +1,107 @@
+import { Request, Response, NextFunction } from 'express';
+import { canvasService } from '../../services/canvasService';
+import { AppError } from '../../middleware/error.middleware';
+
+/**
+ * Generate canvas graph from user's data
+ * POST /api/canvas/generate
+ */
+export const generateCanvas = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+    const {
+      includeEntries = true,
+      includeEmotions = true,
+      includeThemes = true,
+      includePatterns = true,
+      includeDistortions = true,
+      days = 30,
+      maxNodes = 100,
+    } = req.body;
+
+    const timeRange = days ? {
+      start: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+      end: new Date(),
+    } : undefined;
+
+    const graph = await canvasService.generateGraph({
+      userId,
+      includeEntries,
+      includeEmotions,
+      includeThemes,
+      includePatterns,
+      includeDistortions,
+      timeRange,
+      maxNodes,
+      minConnectionWeight: 0.1,
+    });
+
+    res.json({ graph });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Save canvas graph
+ * POST /api/canvas/save
+ */
+export const saveCanvas = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+    const { graph } = req.body;
+
+    if (!graph || !graph.nodes || !graph.edges) {
+      throw new AppError('Invalid graph data', 400);
+    }
+
+    await canvasService.saveGraph(userId, graph);
+
+    res.json({ message: 'Canvas saved successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Load saved canvas graph
+ * GET /api/canvas
+ */
+export const loadCanvas = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+
+    const graph = await canvasService.loadGraph(userId);
+
+    if (!graph) {
+      // Generate new graph if none exists
+      const newGraph = await canvasService.generateGraph({
+        userId,
+        includeEntries: true,
+        includeEmotions: true,
+        includeThemes: true,
+        includePatterns: true,
+        includeDistortions: true,
+        maxNodes: 100,
+      });
+      
+      return res.json({ graph: newGraph, generated: true });
+    }
+
+    res.json({ graph, generated: false });
+  } catch (error) {
+    next(error);
+  }
+};

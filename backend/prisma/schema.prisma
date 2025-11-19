@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String        @id @default(cuid())
+  email       String        @unique
+  password    String
+  name        String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  entries     JournalEntry[]
+  patterns    Pattern[]
+  canvasNodes CanvasNode[]
+  canvasEdges CanvasEdge[]
+  
+  @@map("users")
+}
+
+model JournalEntry {
+  id        String     @id @default(cuid())
+  userId    String
+  title     String?
+  content   String     @db.Text
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses  Analysis[]
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("journal_entries")
+}
+
+model Analysis {
+  id                  String       @id @default(cuid())
+  entryId             String
+  emotions            Json
+  sentiment           Json
+  cognitiveDistortions Json
+  causalLinks         Json
+  keyThemes           Json
+  summary             String       @db.Text
+  createdAt           DateTime     @default(now())
+  
+  entry               JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  
+  @@index([entryId])
+  @@index([createdAt])
+  @@map("analyses")
+}
+
+model Pattern {
+  id              String   @id @default(cuid())
+  userId          String
+  type            String
+  description     String   @db.Text
+  frequency       Int      @default(1)
+  relatedEntryIds Json
+  firstDetected   DateTime @default(now())
+  lastDetected    DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([type])
+  @@map("patterns")
+}
+
+model CanvasNode {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // entry, emotion, theme, pattern, distortion, event
+  label       String
+  description String?  @db.Text
+  metadata    Json     // Flexible storage for node-specific data
+  positionX   Float?
+  positionY   Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("canvas_nodes")
+}
+
+model CanvasEdge {
+  id        String   @id @default(cuid())
+  userId    String
+  sourceId  String
+  targetId  String
+  type      String   // contains, relates, triggers, temporal
+  weight    Float    @default(0.5)
+  label     String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([sourceId])
+  @@index([targetId])
+  @@index([type])
+  @@map("canvas_edges")
+}
