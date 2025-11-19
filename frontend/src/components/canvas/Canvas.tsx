@@ -18,7 +18,7 @@ const Canvas: React.FC<CanvasProps> = ({
   height = 800 
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
+  const [, setSelectedNode] = useState<D3Node | null>(null);
   const [transform, setTransform] = useState({ k: 1, x: 0, y: 0 });
 
   useEffect(() => {

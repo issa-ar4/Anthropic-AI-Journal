@@ -1,9 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import {
   AnalysisResult,
-  Emotion,
-  CognitiveDistortion,
-  CausalLink,
 } from '../types/analysis.types';
 
 // Check if API key is configured

@@ -37,7 +37,7 @@ export const analyzeEntry = async (
     // If analysis exists and is recent (< 1 hour), return it
     if (existingAnalysis && 
         Date.now() - existingAnalysis.createdAt.getTime() < 3600000) {
-      return res.json({
+      res.json({
         analysis: {
           ...existingAnalysis,
           emotions: existingAnalysis.emotions,
@@ -48,6 +48,7 @@ export const analyzeEntry = async (
         },
         cached: true,
       });
+      return;
     }
 
     // Perform analysis using Claude
@@ -61,16 +62,17 @@ export const analyzeEntry = async (
     const savedAnalysis = await prisma.analysis.create({
       data: {
         entryId,
-        emotions: analysis.emotions,
-        sentiment: analysis.sentiment,
-        cognitiveDistortions: analysis.cognitiveDistortions,
-        causalLinks: analysis.causalLinks,
+        emotions: analysis.emotions as any,
+        sentiment: analysis.sentiment as any,
+        cognitiveDistortions: analysis.cognitiveDistortions as any,
+        causalLinks: analysis.causalLinks as any,
         keyThemes: analysis.keyThemes,
         summary: analysis.summary,
       },
     });
 
     res.json({ analysis: savedAnalysis, cached: false });
+    return;
   } catch (error) {
     next(error);
   }
@@ -127,10 +129,10 @@ export const analyzeBatch = async (
         const saved = await prisma.analysis.create({
           data: {
             entryId: entry.id,
-            emotions: analysis.emotions,
-            sentiment: analysis.sentiment,
-            cognitiveDistortions: analysis.cognitiveDistortions,
-            causalLinks: analysis.causalLinks,
+            emotions: analysis.emotions as any,
+            sentiment: analysis.sentiment as any,
+            cognitiveDistortions: analysis.cognitiveDistortions as any,
+            causalLinks: analysis.causalLinks as any,
             keyThemes: analysis.keyThemes,
             summary: analysis.summary,
           },
@@ -271,14 +273,22 @@ export const detectPatterns = async (
     });
 
     if (entries.length < 3) {
-      return res.json({ 
+      res.json({ 
         patterns: [],
         message: 'Need at least 3 entries to detect patterns' 
       });
+      return;
     }
 
     // Use Claude to find patterns
-    const result = await claudeService.findPatterns(entries);
+    const result = await claudeService.findPatterns(
+      entries.map(e => ({
+        id: e.id,
+        content: e.content,
+        title: e.title || undefined,
+        createdAt: e.createdAt
+      }))
+    );
 
     // Save detected patterns
     const savedPatterns = await Promise.all(
