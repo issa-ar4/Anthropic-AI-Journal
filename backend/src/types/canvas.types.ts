@@ -62,6 +62,11 @@ export interface CanvasGraph {
       edgeTypes?: EdgeType[];
       dateRange?: [Date, Date];
     };
+    sessionId?: string;
+    initialEmotion?: string;
+    rootCause?: string;
+    turnCount?: number;
+    [key: string]: any;
   };
 }
 

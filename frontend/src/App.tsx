@@ -7,6 +7,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import JournalPage from '@/pages/JournalPage';
 import InsightsPage from '@/pages/InsightsPage';
 import CanvasPage from '@/pages/CanvasPage';
+import RootCauseSessionPage from '@/pages/RootCauseSessionPage';
 import Layout from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/ToastContainer';
@@ -72,6 +73,18 @@ function App() {
           isAuthenticated ? (
             <Layout>
               <CanvasPage />
+            </Layout>
+          ) : (
+            <Navigate to="/login" />
+          )
+        } 
+      />
+      <Route 
+        path="/root-cause" 
+        element={
+          isAuthenticated ? (
+            <Layout>
+              <RootCauseSessionPage />
             </Layout>
           ) : (
             <Navigate to="/login" />

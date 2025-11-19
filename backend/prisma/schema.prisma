@@ -22,6 +22,7 @@ model User {
   patterns    Pattern[]
   canvasNodes CanvasNode[]
   canvasEdges CanvasEdge[]
+  sessions    Session[]
   
   @@map("users")
 }
@@ -40,6 +41,28 @@ model JournalEntry {
   @@index([userId])
   @@index([createdAt])
   @@map("journal_entries")
+}
+
+// New model for guided root cause analysis sessions
+model Session {
+  id                String        @id @default(cuid())
+  userId            String
+  status            String        @default("active") // active, completed, abandoned
+  initialEmotion    String        // The surface-level emotion user started with
+  rootCause         String?       // Identified root cause (set when completed)
+  turnCount         Int           @default(0)
+  messages          Json          @default("[]") // Array of {role: 'user'|'assistant', content: string, timestamp: DateTime}
+  metadata          Json?         // Additional session data (themes, insights during the process)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  completedAt       DateTime?
+  
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sessions")
 }
 
 model Analysis {

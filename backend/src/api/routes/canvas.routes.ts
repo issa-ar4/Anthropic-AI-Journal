@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generateCanvas, saveCanvas, loadCanvas } from '../controllers/canvasController';
+import { generateCanvas, saveCanvas, loadCanvas, generateSessionCanvas } from '../controllers/canvasController';
 import { authenticateToken } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -11,5 +11,6 @@ router.use(authenticateToken);
 router.post('/generate', generateCanvas);
 router.post('/save', saveCanvas);
 router.get('/', loadCanvas);
+router.get('/session/:sessionId', generateSessionCanvas);
 
 export default router;

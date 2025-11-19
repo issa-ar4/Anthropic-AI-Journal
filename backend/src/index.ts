@@ -51,6 +51,10 @@ app.use('/api', analysisRoutes);
 import canvasRoutes from './api/routes/canvas.routes';
 app.use('/api/canvas', canvasRoutes);
 
+// Import and register session routes
+import sessionRoutes from './api/routes/session.routes';
+app.use('/api/sessions', sessionRoutes);
+
 // Error handling
 app.use(errorHandler);
 

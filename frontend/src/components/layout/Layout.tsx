@@ -1,6 +1,6 @@
 import { ReactNode, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Brain, BookOpen, LogOut, Menu, X } from 'lucide-react';
+import { Brain, BookOpen, LogOut, Menu, X, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../lib/store';
 
 interface LayoutProps {
@@ -38,6 +38,13 @@ export default function Layout({ children }: LayoutProps) {
                 className="text-gray-700 hover:text-gray-900 transition-colors"
               >
                 Dashboard
+              </Link>
+              <Link
+                to="/root-cause"
+                className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Root Cause Analysis
               </Link>
               <Link
                 to="/journal"
@@ -90,6 +97,14 @@ export default function Layout({ children }: LayoutProps) {
                   className="text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   Dashboard
+                </Link>
+                <Link
+                  to="/root-cause"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Root Cause Analysis
                 </Link>
                 <Link
                   to="/journal"

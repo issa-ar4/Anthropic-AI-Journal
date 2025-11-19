@@ -100,7 +100,32 @@ export const loadCanvas = async (
       return res.json({ graph: newGraph, generated: true });
     }
 
-    res.json({ graph, generated: false });
+    return res.json({ graph, generated: false });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Generate canvas graph from a session
+ * GET /api/canvas/session/:sessionId
+ */
+export const generateSessionCanvas = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      throw new AppError('Session ID is required', 400);
+    }
+
+    const graph = await canvasService.generateSessionGraph(sessionId, userId);
+
+    res.json({ graph });
   } catch (error) {
     next(error);
   }

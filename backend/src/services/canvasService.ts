@@ -376,6 +376,157 @@ export class CanvasService {
       default: return '#6b7280';
     }
   }
+
+  /**
+   * Generate a graph from a completed root cause analysis session
+   * Visualizes the path from surface emotion to root cause
+   */
+  async generateSessionGraph(sessionId: string, userId: string): Promise<CanvasGraph> {
+    const session = await prisma.session.findFirst({
+      where: { id: sessionId, userId },
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    const messages = JSON.parse(session.messages as any);
+    const metadata = session.metadata ? JSON.parse(session.metadata as any) : {};
+    const nodes: CanvasNode[] = [];
+    const edges: CanvasEdge[] = [];
+
+    // 1. Add the initial emotion node (starting point)
+    const initialNode: CanvasNode = {
+      id: `session-${sessionId}-initial`,
+      type: 'emotion',
+      label: session.initialEmotion,
+      description: 'Surface-level emotion',
+      metadata: {
+        sessionId: session.id,
+        nodeIndex: 0,
+        color: '#ef4444', // Red for surface emotion
+        size: 2,
+      },
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+    };
+    nodes.push(initialNode);
+
+    // 2. Create nodes for each user response (the journey)
+    const userMessages = messages.filter((m: any) => m.role === 'user').slice(1); // Skip first (initial emotion)
+    
+    userMessages.forEach((msg: any, index: number) => {
+      const node: CanvasNode = {
+        id: `session-${sessionId}-step-${index + 1}`,
+        type: 'event',
+        label: `Layer ${index + 1}`,
+        description: msg.content.substring(0, 100) + (msg.content.length > 100 ? '...' : ''),
+        metadata: {
+          sessionId: session.id,
+          nodeIndex: index + 1,
+          fullText: msg.content,
+          color: '#8b5cf6', // Purple for intermediate steps
+          size: 1.5,
+        },
+        createdAt: new Date(msg.timestamp),
+        updatedAt: new Date(msg.timestamp),
+      };
+      nodes.push(node);
+
+      // Create edge from previous node
+      const prevNodeId = index === 0 
+        ? `session-${sessionId}-initial`
+        : `session-${sessionId}-step-${index}`;
+      
+      edges.push({
+        id: `${prevNodeId}-to-${node.id}`,
+        sourceId: prevNodeId,
+        targetId: node.id,
+        type: 'triggers',
+        weight: 0.8,
+        label: 'led to',
+        createdAt: new Date(msg.timestamp),
+      });
+    });
+
+    // 3. Add the root cause node (destination)
+    if (session.rootCause) {
+      const rootCauseNode: CanvasNode = {
+        id: `session-${sessionId}-root`,
+        type: 'pattern',
+        label: 'Root Cause',
+        description: session.rootCause,
+        metadata: {
+          sessionId: session.id,
+          nodeIndex: userMessages.length + 1,
+          color: '#10b981', // Green for root cause (resolution)
+          size: 2.5,
+          themes: metadata.themes || [],
+        },
+        createdAt: session.completedAt || session.updatedAt,
+        updatedAt: session.updatedAt,
+      };
+      nodes.push(rootCauseNode);
+
+      // Connect last step to root cause
+      const lastStepId = userMessages.length > 0
+        ? `session-${sessionId}-step-${userMessages.length}`
+        : `session-${sessionId}-initial`;
+
+      edges.push({
+        id: `${lastStepId}-to-root`,
+        sourceId: lastStepId,
+        targetId: rootCauseNode.id,
+        type: 'triggers',
+        weight: 1.0,
+        label: 'revealed',
+        createdAt: session.completedAt || session.updatedAt,
+      });
+    }
+
+    // 4. Add theme nodes if available
+    if (metadata.themes && metadata.themes.length > 0) {
+      metadata.themes.forEach((theme: string, index: number) => {
+        const themeNode: CanvasNode = {
+          id: `session-${sessionId}-theme-${index}`,
+          type: 'theme',
+          label: theme,
+          metadata: {
+            sessionId: session.id,
+            color: '#f59e0b', // Orange for themes
+            size: 1.2,
+          },
+          createdAt: session.completedAt || session.updatedAt,
+          updatedAt: session.updatedAt,
+        };
+        nodes.push(themeNode);
+
+        // Connect theme to root cause
+        if (session.rootCause) {
+          edges.push({
+            id: `theme-${index}-to-root`,
+            sourceId: themeNode.id,
+            targetId: `session-${sessionId}-root`,
+            type: 'relates',
+            weight: 0.6,
+            label: 'contributes to',
+            createdAt: session.completedAt || session.updatedAt,
+          });
+        }
+      });
+    }
+
+    return {
+      nodes,
+      edges,
+      metadata: {
+        sessionId: session.id,
+        initialEmotion: session.initialEmotion,
+        rootCause: session.rootCause || undefined,
+        turnCount: session.turnCount,
+      },
+    };
+  }
 }
 
 export const canvasService = new CanvasService();
