@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Brain, TrendingUp, Network, ArrowRight, Sparkles, Shield, Zap, Users, Check, Star, BookOpen } from 'lucide-react';
+import { Brain, TrendingUp, Network, ArrowRight, Sparkles, Shield, Zap, Users, Check, Star } from 'lucide-react';
 
 export default function HomePage() {
   return (

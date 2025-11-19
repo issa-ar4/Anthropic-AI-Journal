@@ -23,9 +23,18 @@ const Canvas: React.FC<CanvasProps> = ({
 
   useEffect(() => {
     if (!svgRef.current || !graph) return;
+    if (!graph.nodes || !graph.edges) {
+      console.error('Invalid graph data:', graph);
+      return;
+    }
+    if (graph.nodes.length === 0) {
+      console.warn('Graph has no nodes');
+      return;
+    }
 
-    // Clear previous content
-    d3.select(svgRef.current).selectAll('*').remove();
+    try {
+      // Clear previous content
+      d3.select(svgRef.current).selectAll('*').remove();
 
     // Create SVG
     const svg = d3.select(svgRef.current);
@@ -225,10 +234,13 @@ const Canvas: React.FC<CanvasProps> = ({
       onNodeDrag?.(event.subject);
     }
 
-    // Cleanup
-    return () => {
-      simulation.stop();
-    };
+      // Cleanup
+      return () => {
+        simulation.stop();
+      };
+    } catch (error) {
+      console.error('Error rendering canvas:', error);
+    }
   }, [graph, width, height, onNodeClick, onNodeDrag]);
 
   return (

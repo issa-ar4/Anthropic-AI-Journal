@@ -16,7 +16,7 @@ const canvasService = {
    * Generate a new canvas graph
    */
   async generateCanvas(options: GenerateCanvasOptions = {}): Promise<CanvasGraph> {
-    const response = await api.post('/api/canvas/generate', options);
+    const response = await api.post('/canvas/generate', options);
     return response.data.graph;
   },
 
@@ -24,14 +24,14 @@ const canvasService = {
    * Save canvas graph to database
    */
   async saveCanvas(graph: CanvasGraph): Promise<void> {
-    await api.post('/api/canvas/save', { graph });
+    await api.post('/canvas/save', { graph });
   },
 
   /**
    * Load saved canvas graph
    */
   async loadCanvas(): Promise<{ graph: CanvasGraph; generated: boolean }> {
-    const response = await api.get('/api/canvas');
+    const response = await api.get('/canvas');
     return response.data;
   },
 };

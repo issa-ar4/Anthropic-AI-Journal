@@ -2,9 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { AppError } from './error.middleware.js';
 
-export const validate = (
+export const validateEntry = (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) => {
   const errors = validationResult(req);
@@ -17,3 +17,5 @@ export const validate = (
   
   next();
 };
+
+export const validate = validateEntry;

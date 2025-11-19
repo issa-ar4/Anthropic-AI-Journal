@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { canvasService } from '../../services/canvasService';
-import { AppError } from '../../middleware/error.middleware';
+import { canvasService } from '../../services/canvasService.js';
+import { AppError } from '../../middleware/error.middleware.js';
 
 /**
  * Generate canvas graph from user's data
@@ -28,6 +28,16 @@ export const generateCanvas = async (
       end: new Date(),
     } : undefined;
 
+    // Check if user has enough data before attempting generation
+    const entriesCount = await canvasService.getAnalyzedEntriesCount(userId);
+    
+    if (entriesCount < 1) {
+      throw new AppError(
+        'Not enough data to generate canvas. You have ' + entriesCount + ' analyzed entries. Requirements: At least 3 journal entries with analyses.',
+        400
+      );
+    }
+
     const graph = await canvasService.generateGraph({
       userId,
       includeEntries,
@@ -43,7 +53,7 @@ export const generateCanvas = async (
     // Check if we have enough data
     if (graph.nodes.length === 0) {
       throw new AppError(
-        'Not enough data to generate canvas. Please create journal entries and analyze them first.',
+        'Not enough data to generate canvas. You have ' + entriesCount + ' analyzed entries. Please create more journal entries and analyze them first.',
         400
       );
     }
@@ -99,6 +109,22 @@ export const loadCanvas = async (
     const graph = await canvasService.loadGraph(userId);
 
     if (!graph) {
+      // Check if user has enough data before attempting generation
+      const entriesCount = await canvasService.getAnalyzedEntriesCount(userId);
+      
+      if (entriesCount < 1) {
+        return res.json({ 
+          graph: null, 
+          generated: false,
+          message: 'No analyzed entries found. Create journal entries and analyze them first.',
+          requirementsNotMet: true,
+          stats: {
+            entriesWithAnalysis: entriesCount,
+            required: 3,
+          }
+        });
+      }
+
       // Generate new graph if none exists
       try {
         const newGraph = await canvasService.generateGraph({
@@ -115,7 +141,12 @@ export const loadCanvas = async (
           return res.json({ 
             graph: null, 
             generated: false,
-            message: 'No data available. Create journal entries to generate your canvas.'
+            message: 'Not enough data to generate canvas. You have ' + entriesCount + ' analyzed entries. Create at least 3 journal entries and analyze them.',
+            requirementsNotMet: true,
+            stats: {
+              entriesWithAnalysis: entriesCount,
+              required: 3,
+            }
           });
         }
         
@@ -125,14 +156,19 @@ export const loadCanvas = async (
         return res.json({ 
           graph: null, 
           generated: false,
-          message: 'Unable to generate canvas. Please ensure you have journal entries with analyses.'
+          message: 'Unable to generate canvas. Please ensure you have at least 3 journal entries with analyses.',
+          requirementsNotMet: true,
+          stats: {
+            entriesWithAnalysis: entriesCount,
+            required: 3,
+          }
         });
       }
+    } else {
+      return res.json({ graph, generated: false });
     }
-
-    return res.json({ graph, generated: false });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 

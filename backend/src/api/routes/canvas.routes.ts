@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { generateCanvas, saveCanvas, loadCanvas, generateSessionCanvas } from '../controllers/canvasController';
-import { authenticateToken } from '../../middleware/auth.middleware';
+import { generateCanvas, saveCanvas, loadCanvas, generateSessionCanvas } from '../controllers/canvasController.js';
+import { authenticateToken } from '../../middleware/auth.middleware.js';
 
 const router = Router();
 

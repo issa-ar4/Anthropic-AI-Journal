@@ -395,6 +395,21 @@ export class CanvasService {
   }
 
   /**
+   * Get count of journal entries that have been analyzed
+   */
+  async getAnalyzedEntriesCount(userId: string): Promise<number> {
+    const count = await prisma.journalEntry.count({
+      where: {
+        userId,
+        analyses: {
+          some: {},
+        },
+      },
+    });
+    return count;
+  }
+
+  /**
    * Generate a graph from a completed root cause analysis session
    * Visualizes the path from surface emotion to root cause
    */

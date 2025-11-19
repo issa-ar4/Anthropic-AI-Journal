@@ -21,10 +21,12 @@ const CanvasPage: React.FC = () => {
   const {
     data: canvasData,
     isLoading,
+    error: loadError,
     refetch,
   } = useQuery({
     queryKey: ['canvas'],
     queryFn: () => canvasService.loadCanvas(),
+    retry: 1,
   });
 
   const graph = canvasData?.graph;
@@ -77,8 +79,22 @@ const CanvasPage: React.FC = () => {
       refetch();
     } catch (error: any) {
       console.error('Failed to regenerate canvas:', error);
-      const errorMessage = error?.response?.data?.error || error?.message || 'Failed to generate canvas';
-      alert(errorMessage + '\n\nPlease create journal entries and analyze them first.');
+      let errorMessage = error?.response?.data?.error || error?.message || 'Failed to generate canvas';
+      
+      // Provide specific guidance based on error
+      if (errorMessage.includes('Not enough data') || errorMessage.includes('no data available')) {
+        errorMessage = '❌ Cannot Generate Canvas\n\n' +
+          '📝 Requirements:\n' +
+          '• At least 3-5 journal entries\n' +
+          '• Entries must be analyzed (use "Analyze" button on each entry)\n\n' +
+          '💡 Tips:\n' +
+          '• Write journal entries about your thoughts and feelings\n' +
+          '• Use the Journal page to create new entries\n' +
+          '• Click "Analyze" on each entry to generate insights\n' +
+          '• Root cause analysis sessions also contribute to the canvas';
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -181,16 +197,49 @@ const CanvasPage: React.FC = () => {
                 <Network className="w-12 h-12 text-purple-600" />
               </div>
               <h3 className="text-3xl font-bold text-gray-900 mb-4">
-                No Canvas Available
+                {loadError ? 'Canvas Generation Failed' : 'No Canvas Available'}
               </h3>
-              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
-                Your cognitive canvas visualizes connections between your journal entries, emotions, themes, and patterns.
-                {!canvasData?.graph && (
-                  <span className="block mt-3 font-semibold text-purple-600">
-                    Create journal entries and analyze them to generate your canvas.
-                  </span>
-                )}
-              </p>
+              
+              {loadError ? (
+                <div className="text-left bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
+                  <p className="text-red-800 font-semibold mb-2">⚠️ Error Loading Canvas</p>
+                  <p className="text-red-700 text-sm mb-4">
+                    {(loadError as any)?.message || 'An unexpected error occurred'}
+                  </p>
+                  <div className="bg-white rounded-lg p-4 border border-red-100">
+                    <p className="text-gray-800 font-semibold mb-2">📋 Requirements:</p>
+                    <ul className="text-gray-700 text-sm space-y-1 list-disc list-inside">
+                      <li>Create at least 3-5 journal entries</li>
+                      <li>Analyze each entry (click "Analyze" button)</li>
+                      <li>Wait for analysis to complete before generating canvas</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-left bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
+                  <p className="text-blue-800 font-semibold mb-3">💡 Getting Started</p>
+                  <div className="text-blue-700 text-sm space-y-2">
+                    <p>The cognitive canvas visualizes connections between your:</p>
+                    <ul className="list-disc list-inside ml-4 space-y-1">
+                      <li>Journal entries</li>
+                      <li>Emotional patterns</li>
+                      <li>Recurring themes</li>
+                      <li>Cognitive distortions</li>
+                      <li>Root cause insights</li>
+                    </ul>
+                  </div>
+                  <div className="mt-4 bg-white rounded-lg p-4 border border-blue-100">
+                    <p className="text-gray-800 font-semibold mb-2">📋 To generate your canvas:</p>
+                    <ol className="text-gray-700 text-sm space-y-1 list-decimal list-inside">
+                      <li>Write 3-5 journal entries about your thoughts</li>
+                      <li>Analyze each entry using the "Analyze" button</li>
+                      <li>Optional: Complete a root cause analysis session</li>
+                      <li>Return here and click "Generate Canvas"</li>
+                    </ol>
+                  </div>
+                </div>
+              )}
+              
               <button
                 onClick={handleRegenerate}
                 disabled={isGenerating}
@@ -204,7 +253,7 @@ const CanvasPage: React.FC = () => {
                 ) : (
                   <>
                     <RefreshCw className="w-5 h-5" />
-                    Generate Canvas
+                    {loadError ? 'Retry Generation' : 'Generate Canvas'}
                   </>
                 )}
               </button>

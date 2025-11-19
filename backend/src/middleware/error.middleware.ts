@@ -7,9 +7,9 @@ interface CustomError extends Error {
 
 export const errorHandler = (
   err: CustomError,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   console.error('Error:', err);
 

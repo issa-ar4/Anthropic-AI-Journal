@@ -3,9 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import authRoutes from './api/routes/auth.routes';
-import entryRoutes from './api/routes/entries.routes';
-import { errorHandler } from './middleware/error.middleware';
+import authRoutes from './api/routes/auth.routes.js';
+import entryRoutes from './api/routes/entries.routes.js';
+import { errorHandler } from './middleware/error.middleware.js';
 
 dotenv.config();
 
@@ -44,15 +44,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/entries', entryRoutes);
 
 // Import and register analysis routes
-import analysisRoutes from './api/routes/analysis.routes';
+import analysisRoutes from './api/routes/analysis.routes.js';
 app.use('/api', analysisRoutes);
 
 // Import and register canvas routes
-import canvasRoutes from './api/routes/canvas.routes';
+import canvasRoutes from './api/routes/canvas.routes.js';
 app.use('/api/canvas', canvasRoutes);
 
 // Import and register session routes
-import sessionRoutes from './api/routes/session.routes';
+import sessionRoutes from './api/routes/session.routes.js';
 app.use('/api/sessions', sessionRoutes);
 
 // Error handling
