@@ -172,6 +172,26 @@ const CanvasPage: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <button
+              onClick={() => setShowGuide(true)}
+              className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:shadow-lg hover:scale-105 flex items-center gap-2 transition-all font-semibold"
+            >
+              <HelpCircle size={20} />
+              How to Use
+            </button>
+            {graph && (
+              <button
+                onClick={() => setShowInsights(!showInsights)}
+                className={`px-5 py-3 rounded-xl hover:scale-105 flex items-center gap-2 transition-all font-semibold ${
+                  showInsights
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                    : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Lightbulb size={20} />
+                {showInsights ? 'Hide' : 'Show'} Insights
+              </button>
+            )}
+            <button
               onClick={handleRegenerate}
               disabled={isGenerating}
               className="px-5 py-3 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-purple-300 hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all font-semibold"
@@ -264,7 +284,7 @@ const CanvasPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+          <div className={`grid gap-6 ${showInsights ? 'lg:grid-cols-[300px_1fr_400px]' : 'lg:grid-cols-[300px_1fr]'}`}>
             {/* Controls Sidebar */}
             {viewMode === 'graph' && (
               <div className="lg:sticky lg:top-4 lg:self-start">
@@ -312,6 +332,13 @@ const CanvasPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Insights Sidebar */}
+            {showInsights && (
+              <div className="lg:sticky lg:top-4 lg:self-start">
+                <CanvasInsights graph={graph} />
+              </div>
+            )}
           </div>
         )}
 
@@ -347,6 +374,9 @@ const CanvasPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Guide Modal */}
+      {showGuide && <CanvasGuide onClose={() => setShowGuide(false)} />}
     </div>
   );
 };
