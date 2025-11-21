@@ -41,6 +41,45 @@ export interface AnalysisResult {
   summary: string;
 }
 
+export interface TriggerTimingData {
+  dayOfWeek: number;
+  hourOfDay: number;
+  count: number;
+  avgSentiment: number;
+}
+
+export interface DistortionImpact {
+  type: string;
+  count: number;
+  avgSentiment: number;
+  severity: number;
+}
+
+export interface EmotionRadarData {
+  emotion: string;
+  intensity: number;
+  category: 'positive' | 'negative' | 'neutral';
+}
+
+export interface ThemeBubble {
+  theme: string;
+  count: number;
+  avgSentiment: number;
+}
+
+export interface RecoveryMetrics {
+  averageRecoveryDays: number;
+  fastestRecoveryDays: number;
+  slowestRecoveryDays: number;
+  totalRecoveryEvents: number;
+  improvementTrend: number;
+}
+
+export interface PatternTrend {
+  patternId: string;
+  weeklyFrequency: number[];
+}
+
 export interface InsightData {
   emotionalTrends: {
     date: string;
@@ -55,4 +94,11 @@ export interface InsightData {
     date: string;
     score: number;
   }[];
+  // Enhanced analytics
+  triggerTiming: TriggerTimingData[];
+  distortionImpacts: DistortionImpact[];
+  emotionRadar: EmotionRadarData[];
+  themeBubbles: ThemeBubble[];
+  recoveryMetrics: RecoveryMetrics;
+  patternTrends: PatternTrend[];
 }

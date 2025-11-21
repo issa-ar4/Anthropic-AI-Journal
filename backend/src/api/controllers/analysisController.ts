@@ -237,6 +237,160 @@ export const getInsights = async (
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
+    // Calculate trigger timing (day of week and hour)
+    const triggerTiming: any[] = [];
+    entries.forEach((e) => {
+      if (e.analyses.length > 0) {
+        const sentiment = (e.analyses[0].sentiment as any).score || 0;
+        const date = new Date(e.createdAt);
+        const dayOfWeek = date.getDay();
+        const hourOfDay = date.getHours();
+        
+        triggerTiming.push({
+          dayOfWeek,
+          hourOfDay,
+          count: 1,
+          avgSentiment: sentiment,
+        });
+      }
+    });
+
+    // Calculate distortion impacts
+    const distortionImpacts: any[] = [];
+    const distortionSentiments: { [key: string]: number[] } = {};
+    
+    entries.forEach((e) => {
+      if (e.analyses.length > 0) {
+        const sentiment = (e.analyses[0].sentiment as any).score || 0;
+        const distortions = e.analyses[0].cognitiveDistortions as any[];
+        
+        if (Array.isArray(distortions)) {
+          distortions.forEach((d: any) => {
+            if (d && d.type) {
+              if (!distortionSentiments[d.type]) {
+                distortionSentiments[d.type] = [];
+              }
+              distortionSentiments[d.type].push(sentiment);
+            }
+          });
+        }
+      }
+    });
+
+    Object.entries(distortionSentiments).forEach(([type, sentiments]) => {
+      const avgSentiment = sentiments.reduce((a, b) => a + b, 0) / sentiments.length;
+      distortionImpacts.push({
+        type,
+        count: sentiments.length,
+        avgSentiment,
+        severity: Math.abs(avgSentiment) * sentiments.length,
+      });
+    });
+
+    // Calculate emotion radar (aggregate emotions)
+    const emotionAggregates: { [key: string]: { total: number; count: number; category: string } } = {};
+    
+    entries.forEach((e) => {
+      if (e.analyses.length > 0) {
+        const emotions = e.analyses[0].emotions as any[];
+        if (Array.isArray(emotions)) {
+          emotions.forEach((emotion: any) => {
+            if (emotion && emotion.name) {
+              if (!emotionAggregates[emotion.name]) {
+                emotionAggregates[emotion.name] = {
+                  total: 0,
+                  count: 0,
+                  category: emotion.category || 'neutral',
+                };
+              }
+              emotionAggregates[emotion.name].total += emotion.intensity || 0;
+              emotionAggregates[emotion.name].count += 1;
+            }
+          });
+        }
+      }
+    });
+
+    const emotionRadar = Object.entries(emotionAggregates).map(([emotion, data]) => ({
+      emotion,
+      intensity: data.total / data.count,
+      category: data.category as any,
+    }));
+
+    // Calculate theme bubbles
+    const themeSentiments: { [key: string]: number[] } = {};
+    
+    entries.forEach((e) => {
+      if (e.analyses.length > 0) {
+        const sentiment = (e.analyses[0].sentiment as any).score || 0;
+        const themes = e.analyses[0].keyThemes as string[];
+        
+        if (Array.isArray(themes)) {
+          themes.forEach((theme: string) => {
+            if (!themeSentiments[theme]) {
+              themeSentiments[theme] = [];
+            }
+            themeSentiments[theme].push(sentiment);
+          });
+        }
+      }
+    });
+
+    const themeBubbles = Object.entries(themeSentiments).map(([theme, sentiments]) => ({
+      theme,
+      count: sentiments.length,
+      avgSentiment: sentiments.reduce((a, b) => a + b, 0) / sentiments.length,
+    }));
+
+    // Calculate recovery metrics
+    const recoveryEvents: number[] = [];
+    let currentLowPoint: { index: number; score: number } | null = null;
+    
+    overallSentimentTrend.forEach((point, idx) => {
+      if (point.score < -0.3) {
+        if (!currentLowPoint || point.score < currentLowPoint.score) {
+          currentLowPoint = { index: idx, score: point.score };
+        }
+      } else if (currentLowPoint && point.score > 0) {
+        const recoveryDays = idx - currentLowPoint.index;
+        recoveryEvents.push(recoveryDays);
+        currentLowPoint = null;
+      }
+    });
+
+    const recoveryMetrics = {
+      averageRecoveryDays: recoveryEvents.length > 0 
+        ? recoveryEvents.reduce((a, b) => a + b, 0) / recoveryEvents.length 
+        : 0,
+      fastestRecoveryDays: recoveryEvents.length > 0 ? Math.min(...recoveryEvents) : 0,
+      slowestRecoveryDays: recoveryEvents.length > 0 ? Math.max(...recoveryEvents) : 0,
+      totalRecoveryEvents: recoveryEvents.length,
+      improvementTrend: 0, // Would need historical comparison
+    };
+
+    // Calculate pattern trends (weekly frequency over last 8 weeks)
+    const patternTrends = patterns.map((p) => {
+      const weeklyFrequency = new Array(8).fill(0);
+      const relatedIds = p.relatedEntryIds as string[];
+      
+      relatedIds.forEach((entryId) => {
+        const entry = entries.find(e => e.id === entryId);
+        if (entry) {
+          const weeksAgo = Math.floor(
+            (Date.now() - entry.createdAt.getTime()) / (7 * 24 * 60 * 60 * 1000)
+          );
+          if (weeksAgo < 8) {
+            weeklyFrequency[7 - weeksAgo] += 1;
+          }
+        }
+      });
+      
+      return {
+        patternId: p.id,
+        weeklyFrequency,
+      };
+    });
+
     const insights: InsightData = {
       emotionalTrends,
       topPatterns: patterns.map((p) => ({
@@ -249,6 +403,12 @@ export const getInsights = async (
       })),
       mostCommonDistortions,
       overallSentimentTrend,
+      triggerTiming,
+      distortionImpacts,
+      emotionRadar,
+      themeBubbles,
+      recoveryMetrics,
+      patternTrends,
     };
 
     res.json(insights);

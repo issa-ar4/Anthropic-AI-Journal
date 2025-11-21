@@ -63,96 +63,106 @@ export default function EmotionalTrendsChart({ data }: EmotionalTrendsChartProps
 
   return (
     <div className="space-y-6">
-      {/* Sentiment Trend */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-indigo-600" />
-            Overall Sentiment Trend
-          </h3>
-          {trend && (
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${trend.change > 0.1 ? 'bg-green-100' : trend.change < -0.1 ? 'bg-red-100' : 'bg-gray-100'}`}>
-                {getTrendIcon()}
-                <span className={`text-sm font-semibold ${getTrendColor()}`}>
-                  {getTrendText()}
-                </span>
-              </div>
-              <span className={`text-xs ${getTrendColor()}`}>
-                {trend.percentChange > 0 ? '+' : ''}{trend.percentChange.toFixed(1)}% vs last week
-              </span>
-            </div>
-          )}
-        </div>
-        {data.overallSentimentTrend.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={data.overallSentimentTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 12 }}
-                tickFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              />
-              <YAxis domain={[-1, 1]} tick={{ fontSize: 12 }} />
-              <Tooltip 
-                labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                formatter={(value: any) => [value.toFixed(2), 'Sentiment']}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="score" 
-                stroke="#6366f1" 
-                strokeWidth={2}
-                dot={{ fill: '#6366f1' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-gray-500 text-center py-8">Not enough data yet</p>
-        )}
-      </div>
-
-      {/* Emotion Trends */}
-      <div className="bg-white p-6 rounded-lg shadow">
+      {/* Combined Sentiment & Emotion Trends */}
+      <div className="bg-white p-8 rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-purple-600" />
-          Emotion Intensity Over Time
+          Combined Emotional & Sentiment Analysis
         </h3>
-        {data.emotionalTrends.length > 0 && emotionNames.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data.emotionalTrends}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="date" 
-                tick={{ fontSize: 12 }}
-                tickFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} />
-              <Tooltip 
-                labelFormatter={(date) => new Date(date).toLocaleDateString()}
-              />
-              <Legend />
-              {emotionNames.map((emotion, idx) => (
-                <Line
-                  key={emotion}
-                  type="monotone"
-                  dataKey={`emotions.${emotion}`}
-                  name={emotion}
-                  stroke={colors[idx % colors.length]}
-                  strokeWidth={2}
-                  dot={{ fill: colors[idx % colors.length] }}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
+        <p className="text-sm text-gray-600 mb-4">
+          See exactly which emotions caused sentiment shifts
+        </p>
+        {data.emotionalTrends.length > 0 && data.overallSentimentTrend.length > 0 && (() => {
+          // Merge sentiment and emotion data by date
+          const mergedData = data.overallSentimentTrend.map(sentimentPoint => {
+            const emotionPoint = data.emotionalTrends.find(e => e.date === sentimentPoint.date);
+            const result: any = { date: sentimentPoint.date, sentiment: sentimentPoint.score };
+            
+            if (emotionPoint) {
+              emotionNames.slice(0, 3).forEach(emotion => {
+                const value = emotionPoint.emotions[emotion];
+                // Set to null instead of 0 to prevent rendering at bottom of chart
+                result[emotion] = value && value > 0 ? value : null;
+              });
+            }
+            
+            return result;
+          });
+          
+          return (
+            <>
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={mergedData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    domain={[-1, 1]} 
+                    tick={{ fontSize: 12 }}
+                    label={{ value: 'Sentiment', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                  />
+                  <YAxis 
+                    yAxisId="right"
+                    orientation="right"
+                    domain={[0, 100]} 
+                    tick={{ fontSize: 12 }}
+                    label={{ value: 'Emotion Intensity', angle: 90, position: 'insideRight', style: { fontSize: 12 } }}
+                  />
+                  <Tooltip 
+                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
+                  />
+                  <Legend />
+                  
+                  {/* Sentiment line */}
+                  <Line 
+                    yAxisId="left"
+                    type="monotone" 
+                    dataKey="sentiment" 
+                    name="Overall Sentiment"
+                    stroke="#6366f1" 
+                    strokeWidth={3}
+                    dot={{ fill: '#6366f1', r: 4 }}
+                  />
+                  
+                  {/* Top emotions */}
+                  {emotionNames.slice(0, 3).map((emotion, idx) => (
+                    <Line
+                      key={emotion}
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey={emotion}
+                      name={emotion}
+                      stroke={colors[idx]}
+                      strokeWidth={2}
+                      dot={{ fill: colors[idx], r: 3 }}
+                      strokeDasharray="5 5"
+                      connectNulls={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+              
+              <div className="mt-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                <p className="text-xs text-gray-700">
+                  <strong>How to read:</strong> The solid line shows overall sentiment (-1 to +1). 
+                  Dashed lines show specific emotion intensities (0-100). Look for correlations between emotions and sentiment dips.
+                </p>
+              </div>
+            </>
+          );
+        })()}
+        {(!data.emotionalTrends.length || !data.overallSentimentTrend.length) && (
           <p className="text-gray-500 text-center py-8">Not enough data yet</p>
         )}
       </div>
 
       {/* Common Cognitive Distortions */}
       {data.mostCommonDistortions.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-8 rounded-lg shadow">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-amber-600" />
             Most Common Thinking Patterns

@@ -7,6 +7,11 @@ import PatternList from '../components/analysis/PatternList';
 import InsightsSummary from '../components/analysis/InsightsSummary';
 import ActionableRecommendations from '../components/analysis/ActionableRecommendations';
 import DateRangeSelector from '../components/analysis/DateRangeSelector';
+import TriggerTimingHeatmap from '../components/analysis/TriggerTimingHeatmap';
+import DistortionImpactChart from '../components/analysis/DistortionImpactChart';
+import EmotionalRadarChart from '../components/analysis/EmotionalRadarChart';
+import ThemeContextBubbles from '../components/analysis/ThemeContextBubbles';
+import RecoveryRateCard from '../components/analysis/RecoveryRateCard';
 
 export default function InsightsPage() {
   const [dateRange, setDateRange] = useState(30);
@@ -132,10 +137,44 @@ export default function InsightsPage() {
         <ActionableRecommendations data={insights} patterns={patternsData.patterns} />
       )}
 
-      {/* Emotional Trends */}
-      {insights && <EmotionalTrendsChart data={insights} />}
+      {/* Recovery Rate - Highlighted */}
+      {insights?.recoveryMetrics && insights.recoveryMetrics.totalRecoveryEvents > 0 && (
+        <div className="mt-10">
+          <RecoveryRateCard data={insights.recoveryMetrics} />
+        </div>
+      )}
 
-      {/* Patterns */}
+      {/* Two Column Layout for Key Insights */}
+      <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Emotional Radar */}
+        {insights?.emotionRadar && insights.emotionRadar.length > 0 && (
+          <EmotionalRadarChart data={insights.emotionRadar} />
+        )}
+
+        {/* Trigger Timing Heatmap */}
+        {insights?.triggerTiming && insights.triggerTiming.length > 0 && (
+          <TriggerTimingHeatmap data={insights.triggerTiming} />
+        )}
+      </div>
+
+      {/* Distortion Impact - Full Width */}
+      {insights?.distortionImpacts && insights.distortionImpacts.length > 0 && (
+        <div className="mt-10">
+          <DistortionImpactChart data={insights.distortionImpacts} />
+        </div>
+      )}
+
+      {/* Theme Bubbles - Full Width */}
+      {insights?.themeBubbles && insights.themeBubbles.length > 0 && (
+        <div className="mt-10">
+          <ThemeContextBubbles data={insights.themeBubbles} />
+        </div>
+      )}
+
+      {/* Emotional Trends - Combined Chart */}
+      {insights && <div className="mt-10"><EmotionalTrendsChart data={insights} /></div>}
+
+      {/* Patterns with Trends */}
       {patternsData && patternsData.patterns.length > 0 && (
         <div className="mt-10 bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
           <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
@@ -144,7 +183,10 @@ export default function InsightsPage() {
             </div>
             Detected Patterns
           </h2>
-          <PatternList patterns={patternsData.patterns} />
+          <PatternList 
+            patterns={patternsData.patterns} 
+            patternTrends={insights?.patternTrends}
+          />
         </div>
       )}
     </div>
