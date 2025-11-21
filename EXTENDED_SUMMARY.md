@@ -1103,6 +1103,6 @@ MIT License - Free to use, modify, and distribute with attribution.
 
 For questions, issues, or feature requests, open a GitHub issue or contact the maintainer.
 
-**Maintained by**: Issa-ar4  
+**Maintained by**: issa-ar4  
 **Repository**: https://github.com/issa-ar4/Anthropic-AI-Journal  
 **Last Updated**: November 21, 2025

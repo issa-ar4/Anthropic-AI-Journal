@@ -95,6 +95,23 @@ cognitive-canvas/
 
 Unlike typical journaling apps or chatbots, Cognitive Canvas creates a persistent, evolving visualization of your cognitive model. Each entry adds context to your mental landscape, revealing patterns invisible in isolated entries. The Emotional Weather Map shows volatility and transitions—not just what you felt, but how chaotically and in what sequences.
 
+## Testing
+
+A comprehensive test suite covering all features is available in the `tests/` directory.
+
+```bash
+# Run all tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# With coverage
+npm run test:coverage
+```
+
+See [tests/README.md](./tests/README.md) for detailed testing documentation.
+
 ## Documentation
 
 For detailed technical documentation, architecture diagrams, deployment guides, API references, and development workflows, see [EXTENDED_SUMMARY.md](./EXTENDED_SUMMARY.md).
