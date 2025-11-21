@@ -570,6 +570,313 @@ export class CanvasService {
   }
 
   /**
+   * Generate emotion timeline data for the past 30 days
+   */
+  async generateTimelineData(userId: string, days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const entries = await prisma.journalEntry.findMany({
+      where: {
+        userId,
+        createdAt: { gte: startDate },
+      },
+      include: {
+        analyses: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Group emotions by date
+    const emotionsByDate = new Map<string, Map<string, number[]>>();
+
+    entries.forEach(entry => {
+      if (entry.analyses.length === 0) return;
+
+      const date = entry.createdAt.toISOString().split('T')[0];
+      const emotions = entry.analyses[0].emotions as any[];
+
+      if (!emotionsByDate.has(date)) {
+        emotionsByDate.set(date, new Map());
+      }
+
+      const dateEmotions = emotionsByDate.get(date)!;
+
+      if (Array.isArray(emotions)) {
+        emotions.forEach((emotion: any) => {
+          const name = typeof emotion === 'string' ? emotion : emotion.name;
+          const intensity = typeof emotion === 'object' ? emotion.intensity : 50;
+
+          if (!name) return;
+
+          if (!dateEmotions.has(name)) {
+            dateEmotions.set(name, []);
+          }
+          dateEmotions.get(name)!.push(intensity);
+        });
+      }
+    });
+
+    // Calculate averages and trends
+    const timeline = [];
+    const allDates = Array.from(emotionsByDate.keys()).sort();
+
+    for (const date of allDates) {
+      const dateEmotions = emotionsByDate.get(date)!;
+      const emotions: any[] = [];
+
+      dateEmotions.forEach((intensities, name) => {
+        const avgIntensity = intensities.reduce((a, b) => a + b, 0) / intensities.length;
+        emotions.push({
+          name,
+          intensity: Math.round(avgIntensity),
+        });
+      });
+
+      timeline.push({ date, emotions });
+    }
+
+    // Calculate trends for each emotion
+    const emotionTrends = new Map<string, 'up' | 'down' | 'stable'>();
+    const allEmotions = new Set<string>();
+
+    timeline.forEach(day => {
+      day.emotions.forEach((e: any) => allEmotions.add(e.name));
+    });
+
+    allEmotions.forEach(emotionName => {
+      const recentIntensities: number[] = [];
+      const olderIntensities: number[] = [];
+
+      timeline.forEach((day, idx) => {
+        const emotion = day.emotions.find((e: any) => e.name === emotionName);
+        if (emotion) {
+          if (idx >= timeline.length / 2) {
+            recentIntensities.push(emotion.intensity);
+          } else {
+            olderIntensities.push(emotion.intensity);
+          }
+        }
+      });
+
+      if (recentIntensities.length === 0 || olderIntensities.length === 0) {
+        emotionTrends.set(emotionName, 'stable');
+      } else {
+        const recentAvg = recentIntensities.reduce((a, b) => a + b, 0) / recentIntensities.length;
+        const olderAvg = olderIntensities.reduce((a, b) => a + b, 0) / olderIntensities.length;
+        const diff = recentAvg - olderAvg;
+
+        if (diff > 10) emotionTrends.set(emotionName, 'up');
+        else if (diff < -10) emotionTrends.set(emotionName, 'down');
+        else emotionTrends.set(emotionName, 'stable');
+      }
+    });
+
+    // Add trends to timeline
+    timeline.forEach(day => {
+      day.emotions = day.emotions.map((e: any) => ({
+        ...e,
+        trend: emotionTrends.get(e.name) || 'stable',
+      }));
+    });
+
+    return { timeline, emotionTrends: Object.fromEntries(emotionTrends) };
+  }
+
+  /**
+   * Generate root cause tree showing emotion -> trigger -> distortion -> pattern hierarchy
+   */
+  async generateRootCauseTree(userId: string) {
+    const entries = await prisma.journalEntry.findMany({
+      where: { userId },
+      include: {
+        analyses: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const patterns = await prisma.pattern.findMany({
+      where: { userId },
+      orderBy: { frequency: 'desc' },
+      take: 10,
+    });
+
+    // Build tree structure: emotion -> themes -> distortions -> patterns
+    const emotionMap = new Map<string, {
+      triggers: Set<string>;
+      distortions: Set<string>;
+      patterns: Set<string>;
+      entryIds: string[];
+    }>();
+
+    entries.forEach(entry => {
+      if (entry.analyses.length === 0) return;
+
+      const analysis = entry.analyses[0];
+      const emotions = analysis.emotions as any[];
+      const themes = Array.isArray(analysis.keyThemes) ? analysis.keyThemes as string[] : [];
+      const distortions = Array.isArray(analysis.cognitiveDistortions) 
+        ? analysis.cognitiveDistortions as any[] 
+        : [];
+
+      if (Array.isArray(emotions)) {
+        emotions.forEach((emotion: any) => {
+          const emotionName = typeof emotion === 'string' ? emotion : emotion.name;
+          if (!emotionName) return;
+
+          if (!emotionMap.has(emotionName)) {
+            emotionMap.set(emotionName, {
+              triggers: new Set(),
+              distortions: new Set(),
+              patterns: new Set(),
+              entryIds: [],
+            });
+          }
+
+          const emotionData = emotionMap.get(emotionName)!;
+          emotionData.entryIds.push(entry.id);
+
+          // Add triggers (themes)
+          themes.forEach(theme => {
+            if (theme && typeof theme === 'string') {
+              emotionData.triggers.add(theme);
+            }
+          });
+
+          // Add distortions
+          distortions.forEach((d: any) => {
+            const distType = typeof d === 'string' ? d : d?.type;
+            if (distType && typeof distType === 'string' && distType.trim() !== '') {
+              emotionData.distortions.add(distType);
+            }
+          });
+        });
+      }
+    });
+
+    // Add patterns to emotions
+    patterns.forEach(pattern => {
+      const relatedIds = pattern.relatedEntryIds as string[];
+      
+      emotionMap.forEach((data, emotionName) => {
+        const overlap = relatedIds.filter(id => data.entryIds.includes(id)).length;
+        if (overlap > 0) {
+          data.patterns.add(pattern.type);
+        }
+      });
+    });
+
+    // Convert to array format
+    const tree = Array.from(emotionMap.entries()).map(([emotion, data]) => ({
+      emotion,
+      triggers: Array.from(data.triggers),
+      distortions: Array.from(data.distortions),
+      patterns: Array.from(data.patterns),
+      entryIds: data.entryIds,
+      frequency: data.entryIds.length,
+    })).sort((a, b) => b.frequency - a.frequency);
+
+    return tree;
+  }
+
+  /**
+   * Generate distortion dashboard with actionable challenges
+   */
+  async generateDistortionDashboard(userId: string) {
+    const entries = await prisma.journalEntry.findMany({
+      where: { userId },
+      include: {
+        analyses: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    // Count distortions
+    const distortionMap = new Map<string, {
+      count: number;
+      descriptions: string[];
+      entryIds: string[];
+      severities: string[];
+    }>();
+
+    entries.forEach(entry => {
+      if (entry.analyses.length === 0) return;
+
+      const distortions = entry.analyses[0].cognitiveDistortions as any[];
+      
+      if (Array.isArray(distortions)) {
+        distortions.forEach((d: any) => {
+          const type = typeof d === 'string' ? d : d?.type;
+          if (!type || typeof type !== 'string' || type.trim() === '') return;
+
+          if (!distortionMap.has(type)) {
+            distortionMap.set(type, {
+              count: 0,
+              descriptions: [],
+              entryIds: [],
+              severities: [],
+            });
+          }
+
+          const data = distortionMap.get(type)!;
+          data.count++;
+          data.entryIds.push(entry.id);
+
+          if (typeof d === 'object') {
+            if (d.explanation) data.descriptions.push(d.explanation);
+            if (d.severity) data.severities.push(d.severity);
+          }
+        });
+      }
+    });
+
+    // Define challenges for common distortions
+    const challenges: Record<string, string> = {
+      'Catastrophizing': 'Ask yourself: "What evidence do I actually have?" and "What\'s the most likely outcome?"',
+      'Black-and-white thinking': 'Look for the gray areas. What\'s one thing that\'s partially true?',
+      'Mind Reading': 'Challenge: "What actual evidence do I have about what they\'re thinking?"',
+      'Overgeneralization': 'Replace "always" and "never" with specific instances.',
+      'Emotional Reasoning': 'Remember: Feeling something doesn\'t make it true. What are the facts?',
+      'Should Statements': 'Replace "should" with "prefer" or "choose to".',
+      'Mental Filter': 'List 3 positive things that happened today, even small ones.',
+      'Personalization': 'Ask: "What other factors might have contributed to this?"',
+    };
+
+    // Convert to sorted array
+    const dashboard = Array.from(distortionMap.entries())
+      .map(([type, data]) => {
+        const avgSeverity = data.severities.length > 0
+          ? data.severities.filter(s => s === 'high').length > data.severities.length / 2 ? 'high'
+          : data.severities.filter(s => s === 'medium').length > data.severities.length / 2 ? 'medium'
+          : 'low'
+          : 'medium';
+
+        return {
+          type,
+          frequency: data.count,
+          description: data.descriptions[0] || `Tendency toward ${type.toLowerCase()}`,
+          challenge: challenges[type] || 'Notice when this pattern occurs and pause to question it.',
+          relatedEntries: data.entryIds.slice(0, 5),
+          severity: avgSeverity,
+        };
+      })
+      .sort((a, b) => b.frequency - a.frequency);
+
+    return dashboard;
+  }
+
+  /**
    * Generate a graph from a completed root cause analysis session
    * Visualizes the path from surface emotion to root cause
    */

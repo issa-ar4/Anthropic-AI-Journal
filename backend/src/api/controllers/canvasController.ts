@@ -196,3 +196,64 @@ export const generateSessionCanvas = async (
     next(error);
   }
 };
+
+/**
+ * Generate emotion timeline data
+ * GET /api/canvas/timeline
+ */
+export const generateTimeline = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+    const days = parseInt(req.query.days as string) || 30;
+
+    const timelineData = await canvasService.generateTimelineData(userId, days);
+
+    res.json(timelineData);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Generate root cause tree data
+ * GET /api/canvas/tree
+ */
+export const generateTree = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+
+    const treeData = await canvasService.generateRootCauseTree(userId);
+
+    res.json({ tree: treeData });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Generate distortion dashboard data
+ * GET /api/canvas/dashboard
+ */
+export const generateDashboard = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.userId;
+
+    const dashboardData = await canvasService.generateDistortionDashboard(userId);
+
+    res.json({ distortions: dashboardData });
+  } catch (error) {
+    next(error);
+  }
+};

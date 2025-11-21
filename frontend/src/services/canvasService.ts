@@ -34,6 +34,30 @@ const canvasService = {
     const response = await api.get('/canvas');
     return response.data;
   },
+
+  /**
+   * Get emotion timeline data
+   */
+  async getTimeline(days: number = 30) {
+    const response = await api.get(`/canvas/timeline?days=${days}`);
+    return response.data;
+  },
+
+  /**
+   * Get root cause tree data
+   */
+  async getTree() {
+    const response = await api.get('/canvas/tree');
+    return response.data;
+  },
+
+  /**
+   * Get distortion dashboard data
+   */
+  async getDashboard() {
+    const response = await api.get('/canvas/dashboard');
+    return response.data;
+  },
 };
 
 export default canvasService;

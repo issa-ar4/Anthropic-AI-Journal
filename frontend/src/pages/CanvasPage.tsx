@@ -6,10 +6,16 @@ import NodeDetailPanel from '../components/canvas/NodeDetailPanel';
 import CanvasControls from '../components/canvas/CanvasControls';
 import CanvasInsights from '../components/canvas/CanvasInsights';
 import CanvasGuide from '../components/canvas/CanvasGuide';
+import { EmotionTimeline } from '../components/canvas/EmotionTimeline';
+import { RootCauseTree } from '../components/canvas/RootCauseTree';
+import { DistortionDashboard } from '../components/canvas/DistortionDashboard';
 import { D3Node, CanvasGraph, NodeType } from '../types/canvas.types';
-import { Loader2, RefreshCw, HelpCircle, Sparkles } from 'lucide-react';
+import { Loader2, RefreshCw, HelpCircle, Sparkles, TrendingUp, GitBranch, AlertTriangle, Network } from 'lucide-react';
+
+type ViewMode = 'timeline' | 'tree' | 'dashboard' | 'advanced';
 
 const CanvasPage: React.FC = () => {
+  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
   const [filteredGraph, setFilteredGraph] = useState<CanvasGraph | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -18,19 +24,53 @@ const CanvasPage: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
-  // Load canvas data
+  // Load timeline data
+  const {
+    data: timelineData,
+    isLoading: timelineLoading,
+  } = useQuery({
+    queryKey: ['canvas-timeline', timeRange],
+    queryFn: () => canvasService.getTimeline(timeRange),
+    enabled: viewMode === 'timeline',
+  });
+
+  // Load tree data
+  const {
+    data: treeData,
+    isLoading: treeLoading,
+  } = useQuery({
+    queryKey: ['canvas-tree'],
+    queryFn: () => canvasService.getTree(),
+    enabled: viewMode === 'tree',
+  });
+
+  // Load dashboard data
+  const {
+    data: dashboardData,
+    isLoading: dashboardLoading,
+  } = useQuery({
+    queryKey: ['canvas-dashboard'],
+    queryFn: () => canvasService.getDashboard(),
+    enabled: viewMode === 'dashboard',
+  });
+
+  // Load canvas data (for advanced view)
   const {
     data: canvasData,
-    isLoading,
+    isLoading: canvasLoading,
     error: loadError,
     refetch,
   } = useQuery({
     queryKey: ['canvas'],
     queryFn: () => canvasService.loadCanvas(),
+    enabled: viewMode === 'advanced',
     retry: 1,
   });
 
   const graph = canvasData?.graph;
+  const isLoading = viewMode === 'timeline' ? timelineLoading : 
+                    viewMode === 'tree' ? treeLoading :
+                    viewMode === 'dashboard' ? dashboardLoading : canvasLoading;
 
   // Filter graph based on controls
   useEffect(() => {
@@ -186,37 +226,92 @@ const CanvasPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Toolbar */}
-        <div className="mb-8 flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200">
-          <button
-            onClick={() => setShowGuide(true)}
-            className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 flex items-center gap-2 transition-all font-medium border border-blue-200"
-          >
-            <HelpCircle size={18} />
-            How to Use
-          </button>
-
-          <button
-            onClick={handleRegenerate}
-            disabled={isGenerating}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <RefreshCw size={18} />
-                Regenerate
-              </>
-            )}
-          </button>
+        {/* View Tabs */}
+        <div className="mb-8 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="flex items-center border-b border-gray-200 overflow-x-auto">
+            <button
+              onClick={() => setViewMode('timeline')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+                viewMode === 'timeline'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <TrendingUp size={18} />
+              Timeline
+            </button>
+            <button
+              onClick={() => setViewMode('dashboard')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+                viewMode === 'dashboard'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <AlertTriangle size={18} />
+              Thinking Patterns
+            </button>
+            <button
+              onClick={() => setViewMode('tree')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+                viewMode === 'tree'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <GitBranch size={18} />
+              Root Cause Flow
+            </button>
+            <button
+              onClick={() => setViewMode('advanced')}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-all whitespace-nowrap ${
+                viewMode === 'advanced'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Network size={18} />
+              Advanced View
+            </button>
+          </div>
+          <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              {viewMode === 'timeline' && 'See how your emotions change over time'}
+              {viewMode === 'dashboard' && 'Understand your cognitive distortions'}
+              {viewMode === 'tree' && 'Explore how emotions connect to patterns'}
+              {viewMode === 'advanced' && 'Interactive network visualization'}
+            </p>
+            <button
+              onClick={() => setShowGuide(true)}
+              className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+            >
+              <HelpCircle size={16} />
+              Help
+            </button>
+          </div>
         </div>
 
         {/* Main Content */}
-        {!graph || !filteredGraph ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          </div>
+        ) : viewMode === 'timeline' && timelineData?.timeline ? (
+          <EmotionTimeline 
+            data={timelineData.timeline}
+            onEmotionClick={(emotion) => console.log('Selected emotion:', emotion)}
+          />
+        ) : viewMode === 'dashboard' && dashboardData?.distortions ? (
+          <DistortionDashboard 
+            distortions={dashboardData.distortions}
+            onEntryClick={(entryId) => window.location.href = `/journal`}
+          />
+        ) : viewMode === 'tree' && treeData?.tree ? (
+          <RootCauseTree 
+            data={treeData.tree}
+            onNodeClick={(type, value) => console.log('Clicked:', type, value)}
+          />
+        ) : viewMode === 'advanced' && (!graph || !filteredGraph) ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-200 shadow-xl">
             <div className="max-w-2xl mx-auto px-6">
               <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-8">
