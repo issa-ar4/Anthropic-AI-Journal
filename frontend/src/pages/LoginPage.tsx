@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Brain } from 'lucide-react';
+import { Brain, ArrowLeft } from 'lucide-react';
 import { authService } from '../services/authService';
 import { useAuthStore } from '../lib/store';
 
@@ -44,6 +44,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
+        {/* Back Button */}
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-medium">Back to Home</span>
+        </Link>
+
         {/* Logo */}
         <Link to="/" className="flex items-center justify-center gap-2 mb-8">
           <Brain className="w-8 h-8 text-indigo-600" />
