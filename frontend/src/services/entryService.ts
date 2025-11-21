@@ -33,4 +33,11 @@ export const entryService = {
   async delete(id: string): Promise<void> {
     await apiClient.delete(`/entries/${id}`);
   },
+
+  async getUnanalyzedEntries(): Promise<{ count: number; entries: Array<{ id: string; title: string; createdAt: string }> }> {
+    const response = await apiClient.get('/entries/unanalyzed');
+    return response.data;
+  },
 };
+
+export default entryService;

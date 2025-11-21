@@ -174,3 +174,44 @@ export const deleteEntry = async (
     next(error);
   }
 };
+
+/**
+ * Get list of unanalyzed entries
+ * GET /api/entries/unanalyzed
+ */
+export const getUnanalyzedEntries = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new AppError('Unauthorized', 401);
+    }
+
+    // Find entries without any analysis
+    const unanalyzedEntries = await prisma.journalEntry.findMany({
+      where: {
+        userId,
+        analyses: {
+          none: {},
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({
+      count: unanalyzedEntries.length,
+      entries: unanalyzedEntries,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -6,6 +6,7 @@ import {
   getEntry,
   updateEntry,
   deleteEntry,
+  getUnanalyzedEntries,
 } from '../controllers/entryController';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { validate } from '../../middleware/validation.middleware';
@@ -23,6 +24,7 @@ const entryValidation = [
 
 // Routes
 router.post('/', entryValidation, validate, createEntry);
+router.get('/unanalyzed', getUnanalyzedEntries); // Must be before /:id route
 router.get('/', getEntries);
 router.get('/:id', getEntry);
 router.put('/:id', entryValidation, validate, updateEntry);

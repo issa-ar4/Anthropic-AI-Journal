@@ -54,3 +54,5 @@ export const analysisService = {
     return response.data;
   },
 };
+
+export default analysisService;

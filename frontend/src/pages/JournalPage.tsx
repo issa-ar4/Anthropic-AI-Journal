@@ -6,6 +6,7 @@ import { analysisService } from '../services/analysisService';
 import { format } from 'date-fns';
 import AnalysisDisplay from '../components/analysis/AnalysisDisplay';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { AnalyzeAllModal } from '../components/journal/AnalyzeAllModal';
 import type { Analysis } from '../types/analysis.types';
 import type { JournalEntry } from '../types/api.types';
 import { countWords, hasEnoughContentForAnalysis, getContentValidationMessage, MIN_WORDS_FOR_ANALYSIS } from '../utils/text';
@@ -24,6 +25,7 @@ export default function JournalPage() {
     entryId: null 
   });
   const [contentWarning, setContentWarning] = useState<string | null>(null);
+  const [showAnalyzeAllModal, setShowAnalyzeAllModal] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -145,13 +147,22 @@ export default function JournalPage() {
           <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Journal Entries</h1>
           <p className="text-gray-600 text-lg">Express your thoughts and feelings</p>
         </div>
-        <button
-          onClick={() => setIsCreating(!isCreating)}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all font-semibold"
-        >
-          <Plus className="w-5 h-5" />
-          New Entry
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAnalyzeAllModal(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all font-semibold"
+          >
+            <Sparkles className="w-5 h-5" />
+            Analyze All with AI
+          </button>
+          <button
+            onClick={() => setIsCreating(!isCreating)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all font-semibold"
+          >
+            <Plus className="w-5 h-5" />
+            New Entry
+          </button>
+        </div>
       </div>
 
       {/* Create Entry Form */}
@@ -361,6 +372,18 @@ export default function JournalPage() {
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
       />
+
+      {/* Analyze All Modal */}
+      {showAnalyzeAllModal && (
+        <AnalyzeAllModal
+          onClose={() => setShowAnalyzeAllModal(false)}
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ['entries'] });
+            queryClient.invalidateQueries({ queryKey: ['canvas'] });
+            queryClient.invalidateQueries({ queryKey: ['insights'] });
+          }}
+        />
+      )}
     </div>
   );
 }
