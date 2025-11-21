@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertCircle, Activity, Clock, Zap } from 'lucide-react';
 
 interface TimelineEmotion {
   name: string;
@@ -18,13 +18,149 @@ interface EmotionTimelineProps {
   onEmotionClick?: (emotionName: string) => void;
 }
 
+// New interfaces for volatility and transitions
+interface EmotionVolatility {
+  emotion: string;
+  volatilityScore: number; // 0-100
+  avgIntensity: number;
+  peakIntensity: number;
+  daysPresent: number;
+}
+
+interface EmotionTransition {
+  from: string;
+  to: string;
+  count: number;
+  avgDaysBetween: number;
+}
+
 export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data, onEmotionClick }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
+  const [viewType, setViewType] = useState<'volatility' | 'transitions'>('volatility');
+
+  // Calculate volatility metrics
+  const volatilityData = useMemo(() => {
+    const emotionMap = new Map<string, number[]>();
+    
+    data.forEach(day => {
+      day.emotions.forEach(emotion => {
+        if (!emotionMap.has(emotion.name)) {
+          emotionMap.set(emotion.name, []);
+        }
+        emotionMap.get(emotion.name)!.push(emotion.intensity);
+      });
+    });
+
+    const volatilities: EmotionVolatility[] = [];
+    emotionMap.forEach((intensities, emotion) => {
+      if (intensities.length < 2) return;
+      
+      // Calculate standard deviation for volatility
+      const avg = intensities.reduce((a, b) => a + b, 0) / intensities.length;
+      const variance = intensities.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / intensities.length;
+      const stdDev = Math.sqrt(variance);
+      
+      // Normalize to 0-100 scale (assuming max std dev of 30 for emotional swings)
+      const volatilityScore = Math.min(100, (stdDev / 30) * 100);
+      
+      volatilities.push({
+        emotion,
+        volatilityScore: Math.round(volatilityScore),
+        avgIntensity: Math.round(avg),
+        peakIntensity: Math.max(...intensities),
+        daysPresent: intensities.length,
+      });
+    });
+    
+    return volatilities.sort((a, b) => b.volatilityScore - a.volatilityScore).slice(0, 5);
+  }, [data]);
+
+  // Calculate emotion transitions
+  const transitionData = useMemo(() => {
+    const transitions = new Map<string, { count: number; totalDays: number }>();
+    
+    for (let i = 0; i < data.length - 1; i++) {
+      const currentDay = data[i];
+      const nextDay = data[i + 1];
+      
+      // Find dominant emotion (highest intensity) for each day
+      const currentDominant = currentDay.emotions.reduce((max, e) => 
+        e.intensity > max.intensity ? e : max, currentDay.emotions[0]);
+      const nextDominant = nextDay.emotions.reduce((max, e) => 
+        e.intensity > max.intensity ? e : max, nextDay.emotions[0]);
+      
+      if (currentDominant && nextDominant && currentDominant.name !== nextDominant.name) {
+        const key = `${currentDominant.name}→${nextDominant.name}`;
+        if (!transitions.has(key)) {
+          transitions.set(key, { count: 0, totalDays: 0 });
+        }
+        const t = transitions.get(key)!;
+        t.count++;
+        t.totalDays += 1; // Days between is always 1 in this simplified version
+      }
+    }
+    
+    return Array.from(transitions.entries())
+      .map(([key, data]) => {
+        const [from, to] = key.split('→');
+        return {
+          from,
+          to,
+          count: data.count,
+          avgDaysBetween: data.totalDays / data.count,
+        };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [data]);
+
+  // Calculate baseline comparison
+  const baselineComparison = useMemo(() => {
+    if (data.length < 14) return null;
+    
+    const mid = Math.floor(data.length / 2);
+    const older = data.slice(0, mid);
+    const recent = data.slice(mid);
+    
+    const getAvgIntensities = (days: TimelineDay[]) => {
+      const map = new Map<string, number[]>();
+      days.forEach(day => {
+        day.emotions.forEach(e => {
+          if (!map.has(e.name)) map.set(e.name, []);
+          map.get(e.name)!.push(e.intensity);
+        });
+      });
+      
+      const result = new Map<string, number>();
+      map.forEach((intensities, emotion) => {
+        result.set(emotion, intensities.reduce((a, b) => a + b, 0) / intensities.length);
+      });
+      return result;
+    };
+    
+    const olderAvg = getAvgIntensities(older);
+    const recentAvg = getAvgIntensities(recent);
+    
+    const changes: { emotion: string; change: number; direction: 'up' | 'down' }[] = [];
+    recentAvg.forEach((recent, emotion) => {
+      const older = olderAvg.get(emotion) || 0;
+      const change = ((recent - older) / Math.max(older, 1)) * 100;
+      if (Math.abs(change) > 10) {
+        changes.push({
+          emotion,
+          change: Math.round(Math.abs(change)),
+          direction: change > 0 ? 'up' : 'down',
+        });
+      }
+    });
+    
+    return changes.sort((a, b) => b.change - a.change).slice(0, 3);
+  }, [data]);
 
   useEffect(() => {
-    if (!svgRef.current || !data || data.length === 0) return;
+    if (!svgRef.current || !data || data.length === 0 || viewType !== 'volatility') return;
 
     // Clear previous content
     d3.select(svgRef.current).selectAll('*').remove();
@@ -33,8 +169,8 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data, onEmotio
     if (!container) return;
 
     const width = container.clientWidth;
-    const height = 400;
-    const margin = { top: 40, right: 120, bottom: 60, left: 80 };
+    const height = 350;
+    const margin = { top: 20, right: 20, bottom: 40, left: 180 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -45,294 +181,325 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data, onEmotio
     const g = svg.append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Get top 5 emotions by frequency
-    const emotionFrequency = new Map<string, number>();
-    data.forEach(day => {
-      day.emotions.forEach(e => {
-        emotionFrequency.set(e.name, (emotionFrequency.get(e.name) || 0) + 1);
-      });
-    });
-    
-    const emotions = Array.from(emotionFrequency.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name]) => name);
+    // Create horizontal bar chart for volatility
+    const yScale = d3.scaleBand()
+      .domain(volatilityData.map(d => d.emotion))
+      .range([0, innerHeight])
+      .padding(0.2);
 
-    // Create scales
-    const xScale = d3.scaleTime()
-      .domain([
-        new Date(data[0].date),
-        new Date(data[data.length - 1].date)
-      ])
+    const xScale = d3.scaleLinear()
+      .domain([0, 100])
       .range([0, innerWidth]);
 
-    const yScale = d3.scaleLinear()
-      .domain([0, 100])
-      .range([innerHeight, 0]);
+    // Color scale based on volatility
+    const colorScale = d3.scaleLinear<string>()
+      .domain([0, 50, 100])
+      .range(['#10b981', '#f59e0b', '#ef4444']);
 
-    // Create emotion to color mapping
-    const emotionColorMap = new Map<string, string>();
-    emotions.forEach((emotion, i) => {
-      const colors = ['#ef4444', '#8b5cf6', '#f59e0b', '#10b981', '#3b82f6'];
-      emotionColorMap.set(emotion, colors[i % colors.length]);
-    });
-
-
+    // Draw Y axis (emotion names)
+    g.append('g')
+      .call(d3.axisLeft(yScale))
+      .selectAll('text')
+      .style('font-size', '13px')
+      .style('font-weight', '600');
 
     // Draw X axis
-    const xAxis = d3.axisBottom(xScale)
-      .ticks(7)
-      .tickFormat(d => d3.timeFormat('%b %d')(d as Date));
-
     g.append('g')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(xAxis)
+      .call(d3.axisBottom(xScale).ticks(5))
       .selectAll('text')
-      .style('text-anchor', 'end')
-      .attr('dx', '-.8em')
-      .attr('dy', '.15em')
-      .attr('transform', 'rotate(-45)');
+      .style('font-size', '11px');
 
-    // Draw Y axis
-    const yAxis = d3.axisLeft(yScale)
-      .ticks(5)
-      .tickFormat(d => `${d}`);
-    
-    g.append('g')
-      .call(yAxis);
-
-    // Add Y-axis label
+    // Add axis labels
     g.append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('y', -60)
-      .attr('x', -innerHeight / 2)
+      .attr('x', innerWidth / 2)
+      .attr('y', innerHeight + 35)
       .attr('text-anchor', 'middle')
       .style('font-size', '12px')
-      .style('font-weight', '600')
-      .style('fill', '#374151')
-      .text('Intensity (0-100)');
+      .style('fill', '#6b7280')
+      .text('Volatility Score (0 = Stable, 100 = Highly Variable)');
 
-    // Group data by emotion for line drawing
-    const emotionData = new Map<string, Array<{ date: Date; intensity: number }>>();
-    emotions.forEach(emotion => {
-      emotionData.set(emotion, []);
-    });
-
-    data.forEach(day => {
-      day.emotions.forEach(emotion => {
-        if (!emotions.includes(emotion.name)) return;
-        emotionData.get(emotion.name)?.push({
-          date: new Date(day.date),
-          intensity: emotion.intensity
-        });
-      });
-    });
-
-    // Draw lines for each emotion
-    emotions.forEach(emotion => {
-      const points = emotionData.get(emotion) || [];
-      if (points.length === 0) return;
-
-      points.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-      const line = d3.line<{ date: Date; intensity: number }>()
-        .x(d => xScale(d.date))
-        .y(d => yScale(d.intensity))
-        .curve(d3.curveMonotoneX);
-
-      const color = emotionColorMap.get(emotion) || '#6b7280';
-
-      g.append('path')
-        .datum(points)
-        .attr('fill', 'none')
-        .attr('stroke', color)
-        .attr('stroke-width', selectedEmotion === null || selectedEmotion === emotion ? 3 : 1)
-        .attr('opacity', selectedEmotion === null || selectedEmotion === emotion ? 0.8 : 0.2)
-        .attr('d', line);
-
-      // Draw circles for data points
-      points.forEach(point => {
-        g.append('circle')
-          .attr('cx', xScale(point.date))
-          .attr('cy', yScale(point.intensity))
-          .attr('r', 5)
-          .attr('fill', color)
-          .attr('opacity', selectedEmotion === null || selectedEmotion === emotion ? 0.9 : 0.2)
-          .attr('stroke', '#fff')
-          .attr('stroke-width', 2)
-          .style('cursor', 'pointer')
-          .on('mouseenter', function() {
-            d3.select(this)
-              .transition()
-              .duration(200)
-              .attr('r', 8)
-              .attr('opacity', 1);
-          })
-          .on('mouseleave', function() {
-            d3.select(this)
-              .transition()
-              .duration(200)
-              .attr('r', 5)
-              .attr('opacity', selectedEmotion === null || selectedEmotion === emotion ? 0.9 : 0.2);
-          })
-          .on('click', () => {
-            setSelectedEmotion(emotion);
-            if (onEmotionClick) {
-              onEmotionClick(emotion);
-            }
-          })
-          .append('title')
-          .text(`${emotion}: ${point.intensity}/100 on ${d3.timeFormat('%b %d')(point.date)}`);
-      });
-    });
-
-    // Add emotion legend
-    const legend = svg.append('g')
-      .attr('transform', `translate(${width - margin.right + 10}, ${margin.top})`);
-
-    legend.append('text')
-      .attr('y', -10)
-      .style('font-size', '12px')
-      .style('font-weight', '600')
-      .text('Top 5 Emotions');
-
-    emotions.forEach((emotion, i) => {
-      const color = emotionColorMap.get(emotion) || '#6b7280';
-      const legendRow = legend.append('g')
-        .attr('transform', `translate(0, ${i * 25 + 10})`)
-        .style('cursor', 'pointer')
-        .on('click', () => {
-          setSelectedEmotion(emotion);
-          if (onEmotionClick) {
-            onEmotionClick(emotion);
-          }
-        });
-
-      legendRow.append('line')
-        .attr('x1', 0)
-        .attr('x2', 20)
-        .attr('y1', 0)
-        .attr('y2', 0)
-        .attr('stroke', color)
-        .attr('stroke-width', 3);
-
-      legendRow.append('circle')
-        .attr('cx', 10)
-        .attr('cy', 0)
-        .attr('r', 4)
-        .attr('fill', color)
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 1.5);
-
-      legendRow.append('text')
-        .attr('x', 28)
-        .attr('y', 4)
-        .style('font-size', '11px')
-        .style('font-weight', selectedEmotion === emotion ? '700' : '400')
-        .style('fill', selectedEmotion === emotion ? color : '#374151')
-        .text(emotion);
-    });
-
-  }, [data, selectedEmotion, onEmotionClick]);
-
-  // Calculate emotion statistics
-  const emotionStats = React.useMemo(() => {
-    const stats = new Map<string, { count: number; avgIntensity: number; trend: string }>();
-    
-    data.forEach(day => {
-      day.emotions.forEach(emotion => {
-        if (!stats.has(emotion.name)) {
-          stats.set(emotion.name, { count: 0, avgIntensity: 0, trend: emotion.trend || 'stable' });
+    // Draw bars
+    g.selectAll('.volatility-bar')
+      .data(volatilityData)
+      .enter()
+      .append('rect')
+      .attr('class', 'volatility-bar')
+      .attr('x', 0)
+      .attr('y', d => yScale(d.emotion) || 0)
+      .attr('width', d => xScale(d.volatilityScore))
+      .attr('height', yScale.bandwidth())
+      .attr('fill', d => colorScale(d.volatilityScore))
+      .attr('opacity', 0.8)
+      .attr('rx', 4)
+      .style('cursor', 'pointer')
+      .on('mouseenter', function() {
+        d3.select(this).attr('opacity', 1);
+      })
+      .on('mouseleave', function() {
+        d3.select(this).attr('opacity', 0.8);
+      })
+      .on('click', (_, d) => {
+        setSelectedEmotion(d.emotion);
+        if (onEmotionClick) {
+          onEmotionClick(d.emotion);
         }
-        const current = stats.get(emotion.name)!;
-        current.count++;
-        current.avgIntensity += emotion.intensity;
       });
-    });
 
-    stats.forEach((value) => {
-      value.avgIntensity = Math.round(value.avgIntensity / value.count);
-    });
+    // Add value labels on bars
+    g.selectAll('.volatility-label')
+      .data(volatilityData)
+      .enter()
+      .append('text')
+      .attr('class', 'volatility-label')
+      .attr('x', d => xScale(d.volatilityScore) + 8)
+      .attr('y', d => (yScale(d.emotion) || 0) + yScale.bandwidth() / 2)
+      .attr('dy', '0.35em')
+      .style('font-size', '12px')
+      .style('font-weight', '700')
+      .style('fill', '#374151')
+      .text(d => d.volatilityScore);
 
-    return Array.from(stats.entries())
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [data]);
+  }, [data, volatilityData, selectedEmotion, onEmotionClick, viewType]);
 
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up': return <TrendingUp className="w-4 h-4 text-red-500" />;
-      case 'down': return <TrendingDown className="w-4 h-4 text-green-500" />;
-      default: return <Minus className="w-4 h-4 text-gray-400" />;
-    }
+  const getVolatilityLevel = (score: number) => {
+    if (score >= 70) return { label: 'Highly Volatile', color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
+    if (score >= 40) return { label: 'Moderately Volatile', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+    return { label: 'Stable', color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
   };
 
   return (
     <div className="space-y-6">
-      {/* Timeline Chart */}
-      <div ref={containerRef} className="bg-white rounded-lg shadow p-6">
+      {/* Header with View Switcher */}
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Emotion Timeline</h3>
-          {selectedEmotion && (
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl">
+                <Activity className="w-6 h-6 text-white" />
+              </div>
+              Emotional Weather Map
+            </h2>
+            <p className="text-sm text-gray-600 mt-2">
+              Understanding your emotional patterns through volatility and transitions
+            </p>
+          </div>
+          <div className="flex gap-2">
             <button
-              onClick={() => setSelectedEmotion(null)}
-              className="text-sm text-indigo-600 hover:text-indigo-800"
+              onClick={() => setViewType('volatility')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                viewType === 'volatility'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
             >
-              Clear selection
+              <Zap className="w-4 h-4 inline mr-1" />
+              Volatility
             </button>
-          )}
+            <button
+              onClick={() => setViewType('transitions')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                viewType === 'transitions'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Activity className="w-4 h-4 inline mr-1" />
+              Transitions
+            </button>
+          </div>
         </div>
-        <svg ref={svgRef} />
-        <p className="text-sm text-gray-500 mt-4">
-          Lines show how emotion intensity changes over time. Click on an emotion in the legend to filter. Y-axis shows intensity (0-100).
-        </p>
       </div>
 
-      {/* Top Emotions Summary */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Top 5 Emotions Summary</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Your most frequent emotions over the selected time period
-        </p>
-        <div className="space-y-3">
-          {emotionStats.map(emotion => (
-            <div
-              key={emotion.name}
-              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200"
-              onClick={() => {
-                setSelectedEmotion(emotion.name);
-                if (onEmotionClick) {
-                  onEmotionClick(emotion.name);
-                }
-              }}
-            >
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  <span className="font-semibold text-gray-900 text-base">{emotion.name}</span>
-                  {getTrendIcon(emotion.trend)}
-                </div>
-                <div className="text-sm text-gray-600 space-x-4">
-                  <span>Appeared <strong>{emotion.count} times</strong></span>
-                  <span>•</span>
-                  <span>Average intensity: <strong>{emotion.avgIntensity} out of 100</strong></span>
-                </div>
-              </div>
-              <div className="ml-4">
-                <div className="w-32 bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-indigo-600 h-3 rounded-full transition-all"
-                    style={{ width: `${emotion.avgIntensity}%` }}
-                  />
-                </div>
-              </div>
+      {viewType === 'volatility' && (
+        <>
+          {/* Volatility Chart */}
+          <div ref={containerRef} className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Emotional Volatility Index
+              </h3>
+              <p className="text-sm text-gray-600">
+                Which emotions swing the most? High volatility means unpredictable intensity changes.
+              </p>
             </div>
-          ))}
+            <svg ref={svgRef} />
+          </div>
+
+          {/* Volatility Details Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {volatilityData.map((emotion) => {
+              const level = getVolatilityLevel(emotion.volatilityScore);
+              return (
+                <div
+                  key={emotion.emotion}
+                  className={`${level.bg} rounded-xl p-5 border ${level.border} cursor-pointer hover:shadow-md transition-all`}
+                  onClick={() => {
+                    setSelectedEmotion(emotion.emotion);
+                    if (onEmotionClick) onEmotionClick(emotion.emotion);
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <h4 className="font-bold text-lg text-gray-900">{emotion.emotion}</h4>
+                    <div className={`px-2 py-1 rounded-lg text-xs font-bold ${level.color} bg-white`}>
+                      {emotion.volatilityScore}
+                    </div>
+                  </div>
+                  
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${level.color} bg-white mb-3`}>
+                    <AlertCircle className="w-3 h-3" />
+                    {level.label}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs mt-4">
+                    <div>
+                      <p className="text-gray-500 mb-1">Avg Intensity</p>
+                      <p className="font-bold text-gray-900">{emotion.avgIntensity}/100</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">Peak</p>
+                      <p className="font-bold text-gray-900">{emotion.peakIntensity}/100</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-gray-500 mb-1">Days Present</p>
+                      <p className="font-bold text-gray-900">{emotion.daysPresent} days</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {viewType === 'transitions' && (
+        <>
+          {/* Explanation Card */}
+          <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+            <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-blue-600" />
+              Understanding Emotional Transitions
+            </h4>
+            <div className="space-y-3 text-sm text-gray-700">
+              <p>
+                <strong>What you're seeing:</strong> These are your most common emotional sequences - how one feeling tends to lead to another.
+              </p>
+              <p>
+                <strong>How to read it:</strong> "Anxiety → Loneliness" means that on days when you felt anxiety, loneliness often followed on the next day.
+              </p>
+              <p>
+                <strong>Why it matters:</strong> Understanding these patterns helps you:
+                <span className="block mt-1 ml-4">• Anticipate what emotion might come next</span>
+                <span className="block ml-4">• Break negative cascades before they start</span>
+                <span className="block ml-4">• Identify triggers that set off emotional chains</span>
+              </p>
+              <p className="text-xs text-gray-600 bg-white rounded-lg p-3 mt-2">
+                <strong>💡 Pro tip:</strong> If you see a pattern like "Pride → Anxiety," it might mean accomplishments trigger worry about maintaining success. Recognizing this helps you prepare healthier responses.
+              </p>
+            </div>
+          </div>
+
+          {/* Emotion Transitions */}
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Emotional Transition Patterns
+              </h3>
+              <p className="text-sm text-gray-600">
+                Your top 5 most frequent emotional sequences
+              </p>
+            </div>
+            
+            {transitionData.length > 0 ? (
+              <div className="space-y-4">
+                {transitionData.map((transition, idx) => (
+                  <div
+                    key={`${transition.from}-${transition.to}-${idx}`}
+                    className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="px-4 py-2 bg-white rounded-lg border-2 border-purple-300">
+                        <span className="font-bold text-gray-900">{transition.from}</span>
+                      </div>
+                      <div className="flex-1 flex items-center gap-2">
+                        <div className="flex-1 h-0.5 bg-gradient-to-r from-purple-300 to-blue-300"></div>
+                        <Activity className="w-4 h-4 text-blue-500" />
+                        <div className="flex-1 h-0.5 bg-gradient-to-r from-blue-300 to-purple-300"></div>
+                      </div>
+                      <div className="px-4 py-2 bg-white rounded-lg border-2 border-blue-300">
+                        <span className="font-bold text-gray-900">{transition.to}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-purple-600">{transition.count}×</p>
+                      <p className="text-xs text-gray-500">occurrences</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-8">
+                Not enough data to detect emotion transitions yet
+              </p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Baseline Comparison */}
+      {baselineComparison && baselineComparison.length > 0 && (
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100">
+          <div className="flex items-center gap-3 mb-4">
+            <Clock className="w-5 h-5 text-indigo-600" />
+            <h3 className="text-lg font-bold text-gray-900">Then vs. Now</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            Comparing recent period to earlier baseline
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {baselineComparison.map((change) => (
+              <div
+                key={change.emotion}
+                className="bg-white rounded-xl p-4 border border-indigo-200"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-900">{change.emotion}</span>
+                  {change.direction === 'up' ? (
+                    <TrendingUp className="w-5 h-5 text-red-500" />
+                  ) : (
+                    <TrendingDown className="w-5 h-5 text-green-500" />
+                  )}
+                </div>
+                <p className={`text-2xl font-bold ${change.direction === 'up' ? 'text-red-600' : 'text-green-600'}`}>
+                  {change.direction === 'up' ? '+' : '-'}{change.change}%
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {change.direction === 'up' ? 'increasing' : 'decreasing'}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-sm text-blue-800">
-            <strong>💡 How to read this:</strong> The number shows how many times this emotion appeared in your journal entries. 
-            The intensity bar shows the average strength of this emotion (0 = barely felt, 100 = very intense).
+      )}
+
+      {/* Info Panel */}
+      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200">
+        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-blue-600" />
+          How to Use This View
+        </h4>
+        <div className="space-y-2 text-sm text-gray-700">
+          <p>
+            <strong>Volatility:</strong> Shows which emotions have the most unpredictable swings. 
+            High volatility = emotional turbulence that needs attention.
+          </p>
+          <p>
+            <strong>Transitions:</strong> Reveals which emotions tend to follow each other. 
+            Pattern: "Anxiety → Self-criticism" means anxiety often leads to self-criticism.
+          </p>
+          <p>
+            <strong>Baseline:</strong> Compares your recent emotional state to your earlier patterns. 
+            Helps identify if things are improving or declining.
           </p>
         </div>
       </div>
