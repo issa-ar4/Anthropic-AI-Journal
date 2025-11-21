@@ -66,29 +66,18 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data, onEmotio
       ])
       .range([0, innerWidth]);
 
-    const yScale = d3.scaleBand()
-      .domain(emotions)
-      .range([0, innerHeight])
-      .padding(0.3);
+    const yScale = d3.scaleLinear()
+      .domain([0, 100])
+      .range([innerHeight, 0]);
 
-    // Color scale based on emotion category
-    const emotionColors: Record<string, string> = {
-      anxiety: '#ef4444',
-      fear: '#dc2626',
-      sadness: '#3b82f6',
-      anger: '#f97316',
-      joy: '#10b981',
-      hope: '#14b8a6',
-      calm: '#6366f1',
-      excitement: '#eab308',
-      overwhelm: '#f59e0b',
-      inadequacy: '#ec4899',
-    };
+    // Create emotion to color mapping
+    const emotionColorMap = new Map<string, string>();
+    emotions.forEach((emotion, i) => {
+      const colors = ['#ef4444', '#8b5cf6', '#f59e0b', '#10b981', '#3b82f6'];
+      emotionColorMap.set(emotion, colors[i % colors.length]);
+    });
 
-    const getColor = (emotionName: string) => {
-      const lower = emotionName.toLowerCase();
-      return emotionColors[lower] || '#6b7280';
-    };
+
 
     // Draw X axis
     const xAxis = d3.axisBottom(xScale)
@@ -105,64 +94,99 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data, onEmotio
       .attr('transform', 'rotate(-45)');
 
     // Draw Y axis
-    const yAxis = d3.axisLeft(yScale);
+    const yAxis = d3.axisLeft(yScale)
+      .ticks(5)
+      .tickFormat(d => `${d}`);
     
     g.append('g')
-      .call(yAxis)
-      .selectAll('text')
-      .style('font-weight', (d) => d === selectedEmotion ? 'bold' : 'normal')
-      .style('fill', (d) => d === selectedEmotion ? getColor(d as string) : '#374151');
+      .call(yAxis);
 
-    // Create intensity scale for circle size
-    const intensityScale = d3.scaleLinear()
-      .domain([0, 100])
-      .range([4, 16]);
+    // Add Y-axis label
+    g.append('text')
+      .attr('transform', 'rotate(-90)')
+      .attr('y', -60)
+      .attr('x', -innerHeight / 2)
+      .attr('text-anchor', 'middle')
+      .style('font-size', '12px')
+      .style('font-weight', '600')
+      .style('fill', '#374151')
+      .text('Intensity (0-100)');
 
-    // Draw emotion data points (only for top 5)
+    // Group data by emotion for line drawing
+    const emotionData = new Map<string, Array<{ date: Date; intensity: number }>>();
+    emotions.forEach(emotion => {
+      emotionData.set(emotion, []);
+    });
+
     data.forEach(day => {
       day.emotions.forEach(emotion => {
-        if (!emotions.includes(emotion.name)) return; // Only show top 5
-        
-        const date = new Date(day.date);
-        const yPos = yScale(emotion.name);
-        
-        if (yPos === undefined) return;
+        if (!emotions.includes(emotion.name)) return;
+        emotionData.get(emotion.name)?.push({
+          date: new Date(day.date),
+          intensity: emotion.intensity
+        });
+      });
+    });
 
+    // Draw lines for each emotion
+    emotions.forEach(emotion => {
+      const points = emotionData.get(emotion) || [];
+      if (points.length === 0) return;
+
+      points.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      const line = d3.line<{ date: Date; intensity: number }>()
+        .x(d => xScale(d.date))
+        .y(d => yScale(d.intensity))
+        .curve(d3.curveMonotoneX);
+
+      const color = emotionColorMap.get(emotion) || '#6b7280';
+
+      g.append('path')
+        .datum(points)
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', selectedEmotion === null || selectedEmotion === emotion ? 3 : 1)
+        .attr('opacity', selectedEmotion === null || selectedEmotion === emotion ? 0.8 : 0.2)
+        .attr('d', line);
+
+      // Draw circles for data points
+      points.forEach(point => {
         g.append('circle')
-          .attr('cx', xScale(date))
-          .attr('cy', yPos + yScale.bandwidth() / 2)
-          .attr('r', intensityScale(emotion.intensity))
-          .attr('fill', getColor(emotion.name))
-          .attr('opacity', selectedEmotion === null || selectedEmotion === emotion.name ? 0.7 : 0.2)
+          .attr('cx', xScale(point.date))
+          .attr('cy', yScale(point.intensity))
+          .attr('r', 5)
+          .attr('fill', color)
+          .attr('opacity', selectedEmotion === null || selectedEmotion === emotion ? 0.9 : 0.2)
           .attr('stroke', '#fff')
-          .attr('stroke-width', 1.5)
+          .attr('stroke-width', 2)
           .style('cursor', 'pointer')
           .on('mouseenter', function() {
             d3.select(this)
               .transition()
               .duration(200)
-              .attr('r', intensityScale(emotion.intensity) * 1.3)
+              .attr('r', 8)
               .attr('opacity', 1);
           })
           .on('mouseleave', function() {
             d3.select(this)
               .transition()
               .duration(200)
-              .attr('r', intensityScale(emotion.intensity))
-              .attr('opacity', selectedEmotion === null || selectedEmotion === emotion.name ? 0.7 : 0.2);
+              .attr('r', 5)
+              .attr('opacity', selectedEmotion === null || selectedEmotion === emotion ? 0.9 : 0.2);
           })
           .on('click', () => {
-            setSelectedEmotion(emotion.name);
+            setSelectedEmotion(emotion);
             if (onEmotionClick) {
-              onEmotionClick(emotion.name);
+              onEmotionClick(emotion);
             }
           })
           .append('title')
-          .text(`${emotion.name}: ${emotion.intensity}/100 on ${d3.timeFormat('%b %d')(date)}`);
+          .text(`${emotion}: ${point.intensity}/100 on ${d3.timeFormat('%b %d')(point.date)}`);
       });
     });
 
-    // Add legend
+    // Add emotion legend
     const legend = svg.append('g')
       .attr('transform', `translate(${width - margin.right + 10}, ${margin.top})`);
 
@@ -170,20 +194,43 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data, onEmotio
       .attr('y', -10)
       .style('font-size', '12px')
       .style('font-weight', '600')
-      .text('Intensity');
+      .text('Top 5 Emotions');
 
-    [100, 50, 10].forEach((intensity, i) => {
-      legend.append('circle')
-        .attr('cy', i * 30 + 10)
-        .attr('r', intensityScale(intensity))
-        .attr('fill', '#6b7280')
-        .attr('opacity', 0.5);
+    emotions.forEach((emotion, i) => {
+      const color = emotionColorMap.get(emotion) || '#6b7280';
+      const legendRow = legend.append('g')
+        .attr('transform', `translate(0, ${i * 25 + 10})`)
+        .style('cursor', 'pointer')
+        .on('click', () => {
+          setSelectedEmotion(emotion);
+          if (onEmotionClick) {
+            onEmotionClick(emotion);
+          }
+        });
 
-      legend.append('text')
-        .attr('x', 25)
-        .attr('y', i * 30 + 15)
+      legendRow.append('line')
+        .attr('x1', 0)
+        .attr('x2', 20)
+        .attr('y1', 0)
+        .attr('y2', 0)
+        .attr('stroke', color)
+        .attr('stroke-width', 3);
+
+      legendRow.append('circle')
+        .attr('cx', 10)
+        .attr('cy', 0)
+        .attr('r', 4)
+        .attr('fill', color)
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1.5);
+
+      legendRow.append('text')
+        .attr('x', 28)
+        .attr('y', 4)
         .style('font-size', '11px')
-        .text(`${intensity}%`);
+        .style('font-weight', selectedEmotion === emotion ? '700' : '400')
+        .style('fill', selectedEmotion === emotion ? color : '#374151')
+        .text(emotion);
     });
 
   }, [data, selectedEmotion, onEmotionClick]);
@@ -238,7 +285,7 @@ export const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data, onEmotio
         </div>
         <svg ref={svgRef} />
         <p className="text-sm text-gray-500 mt-4">
-          Click on an emotion name or circle to filter. Circle size represents intensity.
+          Lines show how emotion intensity changes over time. Click on an emotion in the legend to filter. Y-axis shows intensity (0-100).
         </p>
       </div>
 

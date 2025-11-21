@@ -15,7 +15,7 @@ const Canvas: React.FC<CanvasProps> = ({
   onNodeClick, 
   onNodeDrag,
   width = 1200, 
-  height = 800 
+  height = 900 // Increased from 800 for better spacing
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [, setSelectedNode] = useState<D3Node | null>(null);
@@ -120,13 +120,14 @@ const Canvas: React.FC<CanvasProps> = ({
     columns.forEach((col) => {
       const typeNodes = groupedNodes[col.type] || [];
       if (typeNodes.length === 0) return;
-      const spacing = Math.min(80, height / (typeNodes.length + 1));
+      // Increased minimum spacing to prevent label overlap
+      const spacing = Math.max(120, Math.min(150, (height - 200) / typeNodes.length));
       
       typeNodes.forEach((node, i) => {
         nodes.push({
           ...node,
           x: col.x,
-          y: 100 + (i + 1) * spacing,
+          y: 150 + i * spacing,
           fx: col.x, // Fix X position to keep columns
           fy: undefined
         });
@@ -207,8 +208,8 @@ const Canvas: React.FC<CanvasProps> = ({
         .strength(0.3)
       )
       .force('collision', d3.forceCollide<D3Node>()
-        .radius(45)
-        .strength(0.9)
+        .radius(60) // Increased to account for label height
+        .strength(1.0)
       )
       .force('y', d3.forceY<D3Node>(d => d.y || height / 2).strength(0.1));
 
@@ -308,30 +309,31 @@ const Canvas: React.FC<CanvasProps> = ({
     node.each(function(d) {
       const nodeGroup = d3.select(this);
       const text = d.label;
-      const maxWidth = 80;
+      const maxWidth = 100; // Increased from 80
       const words = text.split(/\s+/);
       
       let line = '';
       let lineNumber = 0;
-      const lineHeight = 12;
+      const lineHeight = 13; // Increased from 12
       const y = 38;
       
       words.forEach((word) => {
         const testLine = line + (line ? ' ' : '') + word;
-        if (testLine.length * 6 > maxWidth && line !== '') {
+        // Better width estimation (7px per char instead of 6)
+        if (testLine.length * 7 > maxWidth && line !== '') {
           // Add the current line
           nodeGroup.append('text')
             .attr('text-anchor', 'middle')
             .attr('y', y + lineNumber * lineHeight)
-            .attr('font-size', '10px')
+            .attr('font-size', '11px') // Increased from 10px
             .attr('font-weight', '500')
             .attr('fill', '#374151')
             .attr('pointer-events', 'none')
             .text(line);
           line = word;
           lineNumber++;
-          // Limit to 3 lines
-          if (lineNumber >= 3) {
+          // Limit to 2 lines to reduce height
+          if (lineNumber >= 2) {
             return;
           }
         } else {
@@ -339,16 +341,27 @@ const Canvas: React.FC<CanvasProps> = ({
         }
       });
       
-      // Add the last line
-      if (line && lineNumber < 3) {
+      // Add the last line (with ellipsis if truncated)
+      if (line && lineNumber < 2) {
         nodeGroup.append('text')
           .attr('text-anchor', 'middle')
           .attr('y', y + lineNumber * lineHeight)
-          .attr('font-size', '10px')
+          .attr('font-size', '11px') // Increased from 10px
           .attr('font-weight', '500')
           .attr('fill', '#374151')
           .attr('pointer-events', 'none')
           .text(line);
+      } else if (line && lineNumber === 2) {
+        // Truncate with ellipsis if we have more text
+        const truncated = line.length > 12 ? line.substring(0, 12) + '...' : line;
+        nodeGroup.append('text')
+          .attr('text-anchor', 'middle')
+          .attr('y', y + lineNumber * lineHeight)
+          .attr('font-size', '11px')
+          .attr('font-weight', '500')
+          .attr('fill', '#374151')
+          .attr('pointer-events', 'none')
+          .text(truncated);
       }
     });
 
