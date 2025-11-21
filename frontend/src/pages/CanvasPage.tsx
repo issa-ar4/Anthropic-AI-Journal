@@ -4,11 +4,10 @@ import canvasService from '../services/canvasService';
 import Canvas from '../components/canvas/Canvas';
 import NodeDetailPanel from '../components/canvas/NodeDetailPanel';
 import CanvasControls from '../components/canvas/CanvasControls';
-import TimelineView from '../components/canvas/TimelineView';
 import CanvasInsights from '../components/canvas/CanvasInsights';
 import CanvasGuide from '../components/canvas/CanvasGuide';
 import { D3Node, CanvasGraph, NodeType } from '../types/canvas.types';
-import { Loader2, Download, RefreshCw, BarChart3, Network, HelpCircle, Lightbulb } from 'lucide-react';
+import { Loader2, RefreshCw, HelpCircle, Sparkles } from 'lucide-react';
 
 const CanvasPage: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
@@ -16,10 +15,8 @@ const CanvasPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNodeTypes, setSelectedNodeTypes] = useState<NodeType[]>([]);
   const [timeRange, setTimeRange] = useState(30);
-  const [viewMode, setViewMode] = useState<'graph' | 'timeline'>('graph');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  const [showInsights, setShowInsights] = useState(true);
 
   // Load canvas data
   const {
@@ -65,6 +62,52 @@ const CanvasPage: React.FC = () => {
 
     setFilteredGraph({ nodes, edges, metadata: graph.metadata });
   }, [graph, selectedNodeTypes, searchQuery]);
+
+  // Generate actionable analysis from the graph data
+  const generateAnalysis = (graphData: CanvasGraph): string => {
+    const emotions = graphData.nodes.filter(n => n.type === 'emotion');
+    const distortions = graphData.nodes.filter(n => n.type === 'distortion');
+    const themes = graphData.nodes.filter(n => n.type === 'theme');
+    const patterns = graphData.nodes.filter(n => n.type === 'pattern');
+    
+    // Find top emotion
+    const topEmotion = emotions.sort((a, b) => 
+      ((b.metadata?.frequency || 0) as number) - ((a.metadata?.frequency || 0) as number)
+    )[0];
+    
+    // Find top distortion
+    const topDistortion = distortions.sort((a, b) => 
+      ((b.metadata?.frequency || 0) as number) - ((a.metadata?.frequency || 0) as number)
+    )[0];
+    
+    // Find top theme
+    const topTheme = themes.sort((a, b) => 
+      ((b.metadata?.frequency || 0) as number) - ((a.metadata?.frequency || 0) as number)
+    )[0];
+
+    // Build analysis text
+    let analysis = '';
+    
+    if (topEmotion && topDistortion && topTheme) {
+      analysis = `Your journal reveals that "${topEmotion.label}" is your most frequent emotion, often connected to thoughts about "${topTheme.label}". `;
+      analysis += `You frequently experience "${topDistortion.label}", which may be distorting how you perceive these situations. `;
+      analysis += `Action Steps: (1) When you notice ${topEmotion.label.toLowerCase()}, pause and identify if ${topDistortion.label.toLowerCase()} is present. `;
+      analysis += `(2) Challenge this thought pattern by asking "What evidence supports or contradicts this?" `;
+      analysis += `(3) Journal about ${topTheme.label.toLowerCase()} using more balanced, evidence-based language. `;
+      analysis += `(4) Practice mindfulness when ${topEmotion.label.toLowerCase()} arises to create space between feeling and reaction.`;
+    } else if (topEmotion) {
+      analysis = `Your primary emotional pattern centers around "${topEmotion.label}". `;
+      analysis += `Action Steps: (1) Track what triggers this emotion throughout your day. `;
+      analysis += `(2) Develop coping strategies specific to managing ${topEmotion.label.toLowerCase()}. `;
+      analysis += `(3) Consider reaching out for support when this emotion feels overwhelming.`;
+    } else {
+      analysis = `Your canvas is building up. Continue journaling regularly to reveal deeper patterns. `;
+      analysis += `Action Steps: (1) Write at least 3-5 entries per week. (2) Be honest about your emotions. `;
+      analysis += `(3) Use the "Analyze" button on each entry to extract insights.`;
+    }
+    
+    return analysis;
+  };
 
   // Handle regenerate canvas
   const handleRegenerate = async () => {
@@ -139,78 +182,37 @@ const CanvasPage: React.FC = () => {
             Cognitive Canvas
           </h1>
           <p className="text-gray-600 text-lg">
-            Interactive visualization of your journal entries, emotions, themes, and patterns
+            Your most important insights organized into 5 columns. Each column shows the top 5 items based on frequency, connections, and recency.
           </p>
         </div>
 
         {/* Toolbar */}
-        <div className="mb-8 flex items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-lg">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setViewMode('graph')}
-              className={`px-5 py-3 rounded-xl flex items-center gap-2 transition-all font-semibold ${
-                viewMode === 'graph'
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105'
-              }`}
-            >
-              <Network size={20} />
-              Graph View
-            </button>
-            <button
-              onClick={() => setViewMode('timeline')}
-              className={`px-5 py-3 rounded-xl flex items-center gap-2 transition-all font-semibold ${
-                viewMode === 'timeline'
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105'
-              }`}
-            >
-              <BarChart3 size={20} />
-              Timeline View
-            </button>
-          </div>
+        <div className="mb-8 flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200">
+          <button
+            onClick={() => setShowGuide(true)}
+            className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 flex items-center gap-2 transition-all font-medium border border-blue-200"
+          >
+            <HelpCircle size={18} />
+            How to Use
+          </button>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowGuide(true)}
-              className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:shadow-lg hover:scale-105 flex items-center gap-2 transition-all font-semibold"
-            >
-              <HelpCircle size={20} />
-              How to Use
-            </button>
-            {graph && (
-              <button
-                onClick={() => setShowInsights(!showInsights)}
-                className={`px-5 py-3 rounded-xl hover:scale-105 flex items-center gap-2 transition-all font-semibold ${
-                  showInsights
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                    : 'bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Lightbulb size={20} />
-                {showInsights ? 'Hide' : 'Show'} Insights
-              </button>
+          <button
+            onClick={handleRegenerate}
+            disabled={isGenerating}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <RefreshCw size={18} />
+                Regenerate
+              </>
             )}
-            <button
-              onClick={handleRegenerate}
-              disabled={isGenerating}
-              className="px-5 py-3 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-purple-300 hover:scale-105 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all font-semibold"
-            >
-              {isGenerating ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <RefreshCw size={20} />
-              )}
-              {isGenerating ? 'Generating...' : 'Regenerate'}
-            </button>
-            <button
-              onClick={handleExport}
-              className="px-5 py-3 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-blue-300 hover:scale-105 flex items-center gap-2 transition-all font-semibold"
-            >
-              <Download size={20} />
-              Export
-            </button>
-          </div>
+          </button>
         </div>
 
         {/* Main Content */}
@@ -218,7 +220,7 @@ const CanvasPage: React.FC = () => {
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-200 shadow-xl">
             <div className="max-w-2xl mx-auto px-6">
               <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-8">
-                <Network className="w-12 h-12 text-purple-600" />
+                <Sparkles className="w-12 h-12 text-purple-600" />
               </div>
               <h3 className="text-3xl font-bold text-gray-900 mb-4">
                 {loadError ? 'Canvas Generation Failed' : 'No Canvas Available'}
@@ -284,95 +286,67 @@ const CanvasPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className={`grid gap-6 ${showInsights ? 'lg:grid-cols-[300px_1fr_400px]' : 'lg:grid-cols-[300px_1fr]'}`}>
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Controls Sidebar */}
-            {viewMode === 'graph' && (
-              <div className="lg:sticky lg:top-4 lg:self-start">
-                <CanvasControls
-                  selectedNodeTypes={selectedNodeTypes}
-                  selectedEdgeTypes={[]}
-                  searchQuery={searchQuery}
-                  timeRange={timeRange}
-                  onFilterChange={({ nodeTypes, searchQuery: query }) => {
-                    setSelectedNodeTypes(nodeTypes);
-                    setSearchQuery(query);
-                  }}
-                  onLayoutChange={(layout) => {
-                    console.log('Layout changed to:', layout);
-                    // Layout changes would be implemented in Canvas component
-                  }}
-                  onTimeRangeChange={(days) => {
-                    setTimeRange(days);
-                  }}
+            <div className="w-full lg:w-64 flex-shrink-0">
+              <CanvasControls
+                selectedNodeTypes={selectedNodeTypes}
+                selectedEdgeTypes={[]}
+                searchQuery={searchQuery}
+                timeRange={timeRange}
+                onFilterChange={({ nodeTypes, searchQuery: query }) => {
+                  setSelectedNodeTypes(nodeTypes);
+                  setSearchQuery(query);
+                }}
+                onLayoutChange={(layout) => {
+                  console.log('Layout changed to:', layout);
+                }}
+                onTimeRangeChange={(days) => {
+                  setTimeRange(days);
+                }}
+              />
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 min-w-0 space-y-6">
+              {/* Visualization */}
+              <div className="relative overflow-x-auto">
+                <Canvas
+                  graph={filteredGraph}
+                  onNodeClick={setSelectedNode}
+                  width={1200}
+                  height={800}
+                />
+                <NodeDetailPanel
+                  node={selectedNode}
+                  onClose={() => setSelectedNode(null)}
                 />
               </div>
-            )}
 
-            {/* Visualization */}
-            <div className="relative">
-              {viewMode === 'graph' ? (
-                <>
-                  <Canvas
-                    graph={filteredGraph}
-                    onNodeClick={setSelectedNode}
-                    width={1200}
-                    height={800}
-                  />
-                  <NodeDetailPanel
-                    node={selectedNode}
-                    onClose={() => setSelectedNode(null)}
-                  />
-                </>
-              ) : (
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                  <TimelineView
-                    nodes={filteredGraph.nodes}
-                    onNodeClick={(node) => setSelectedNode(node as D3Node)}
-                  />
+              {/* Analysis Section */}
+              <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="text-2xl">🧠</span>
+                  What This Means & What To Do
+                </h3>
+                <div className="prose prose-sm max-w-none">
+                  <p className="text-gray-800 leading-relaxed">
+                    {generateAnalysis(graph)}
+                  </p>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Insights Sidebar */}
-            {showInsights && (
-              <div className="lg:sticky lg:top-4 lg:self-start">
+            <div className="w-full lg:w-80 flex-shrink-0">
+              <div className="lg:sticky lg:top-4">
                 <CanvasInsights graph={graph} />
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Stats Footer */}
-        {graph && (
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Total Nodes</p>
-              <p className="text-2xl font-bold text-gray-900">{graph.nodes.length}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Connections</p>
-              <p className="text-2xl font-bold text-gray-900">{graph.edges.length}</p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Entries</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {graph.nodes.filter(n => n.type === 'entry').length}
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Emotions</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {graph.nodes.filter(n => n.type === 'emotion').length}
-              </p>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <p className="text-sm text-gray-600">Patterns</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {graph.nodes.filter(n => n.type === 'pattern').length}
-              </p>
-            </div>
-          </div>
-        )}
+
       </div>
 
       {/* Guide Modal */}

@@ -171,8 +171,9 @@ export class CanvasService {
           
           for (const distortion of distortions) {
             // Handle both string and object formats
-            const distortionType = typeof distortion === 'string' ? distortion : distortion.type;
-            if (!distortionType) continue;
+            const distortionType = typeof distortion === 'string' ? distortion : distortion?.type;
+            // Skip if distortionType is invalid (null, undefined, empty string)
+            if (!distortionType || typeof distortionType !== 'string' || distortionType.trim() === '') continue;
             
             const distortionId = `distortion-${distortionType.toLowerCase().replace(/\s+/g, '-')}`;
             
@@ -277,6 +278,165 @@ export class CanvasService {
               createdAt: pattern.createdAt,
             });
           }
+        }
+      }
+    }
+
+    // 7. Create inter-column connections (emotion -> theme -> pattern -> distortion)
+    const emotionNodes = nodes.filter(n => n.type === 'emotion');
+    const themeNodes = nodes.filter(n => n.type === 'theme');
+    const patternNodes = nodes.filter(n => n.type === 'pattern');
+    const distortionNodes = nodes.filter(n => n.type === 'distortion');
+
+    // Build a co-occurrence matrix between all node types through entries
+    const buildCooccurrenceMap = (sourceType: string, targetType: string) => {
+      const cooccurrence = new Map<string, Map<string, number>>();
+      
+      // Get all entries
+      const entryNodes = nodes.filter(n => n.type === 'entry');
+      
+      for (const entry of entryNodes) {
+        const entryId = entry.id;
+        
+        // Find all source nodes connected to this entry
+        const sourceNodes = edges
+          .filter(e => e.sourceId === entryId && nodeMap.has(e.targetId) && nodeMap.get(e.targetId)!.type === sourceType)
+          .map(e => e.targetId);
+        
+        // Find all target nodes connected to this entry
+        const targetNodes = edges
+          .filter(e => e.sourceId === entryId && nodeMap.has(e.targetId) && nodeMap.get(e.targetId)!.type === targetType)
+          .map(e => e.targetId);
+        
+        // Also check patterns which connect differently (pattern -> entry)
+        if (targetType === 'pattern') {
+          const patternToEntry = edges
+            .filter(e => e.targetId === entryId && e.sourceId.startsWith('pattern-'))
+            .map(e => e.sourceId);
+          targetNodes.push(...patternToEntry);
+        }
+        
+        // Record co-occurrences
+        for (const sourceId of sourceNodes) {
+          if (!cooccurrence.has(sourceId)) {
+            cooccurrence.set(sourceId, new Map());
+          }
+          const targetMap = cooccurrence.get(sourceId)!;
+          
+          for (const targetId of targetNodes) {
+            targetMap.set(targetId, (targetMap.get(targetId) || 0) + 1);
+          }
+        }
+      }
+      
+      return cooccurrence;
+    };
+
+    // Connect emotions to themes based on co-occurrence
+    if (includeEmotions && includeThemes && emotionNodes.length > 0 && themeNodes.length > 0) {
+      const emotionThemeCooccurrence = buildCooccurrenceMap('emotion', 'theme');
+      
+      for (const emotion of emotionNodes) {
+        const cooccurringThemes = emotionThemeCooccurrence.get(emotion.id);
+        if (!cooccurringThemes || cooccurringThemes.size === 0) continue;
+        
+        // Get top 3 most co-occurring themes
+        const sortedThemes = Array.from(cooccurringThemes.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+        
+        for (const [themeId, count] of sortedThemes) {
+          const weight = Math.min(0.5 + (count * 0.1), 1);
+          edges.push({
+            id: `${emotion.id}-${themeId}-cooccur`,
+            sourceId: emotion.id,
+            targetId: themeId,
+            type: 'relates',
+            weight,
+            label: 'relates to',
+            createdAt: new Date(),
+          });
+        }
+      }
+    }
+
+    // Connect themes to patterns based on co-occurrence
+    if (includeThemes && includePatterns && themeNodes.length > 0 && patternNodes.length > 0) {
+      const themePatternCooccurrence = buildCooccurrenceMap('theme', 'pattern');
+      
+      for (const theme of themeNodes) {
+        const cooccurringPatterns = themePatternCooccurrence.get(theme.id);
+        if (!cooccurringPatterns || cooccurringPatterns.size === 0) continue;
+        
+        // Get top 3 most co-occurring patterns
+        const sortedPatterns = Array.from(cooccurringPatterns.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+        
+        for (const [patternId, count] of sortedPatterns) {
+          const weight = Math.min(0.5 + (count * 0.1), 1);
+          edges.push({
+            id: `${theme.id}-${patternId}-cooccur`,
+            sourceId: theme.id,
+            targetId: patternId,
+            type: 'relates',
+            weight,
+            label: 'appears in',
+            createdAt: new Date(),
+          });
+        }
+      }
+    }
+
+    // Connect patterns to distortions based on co-occurrence
+    if (includePatterns && includeDistortions && patternNodes.length > 0 && distortionNodes.length > 0) {
+      // For patterns to distortions, we need to check entries that patterns relate to
+      const patternDistortionCooccurrence = new Map<string, Map<string, number>>();
+      
+      for (const pattern of patternNodes) {
+        // Find entries this pattern relates to
+        const patternEntries = edges
+          .filter(e => e.sourceId === pattern.id && e.targetId.startsWith('entry-'))
+          .map(e => e.targetId);
+        
+        const distortionMap = new Map<string, number>();
+        
+        // Find distortions in those same entries
+        for (const entryId of patternEntries) {
+          const entryDistortions = edges
+            .filter(e => e.sourceId === entryId && e.targetId.startsWith('distortion-'))
+            .map(e => e.targetId);
+          
+          for (const distortionId of entryDistortions) {
+            distortionMap.set(distortionId, (distortionMap.get(distortionId) || 0) + 1);
+          }
+        }
+        
+        if (distortionMap.size > 0) {
+          patternDistortionCooccurrence.set(pattern.id, distortionMap);
+        }
+      }
+      
+      for (const pattern of patternNodes) {
+        const cooccurringDistortions = patternDistortionCooccurrence.get(pattern.id);
+        if (!cooccurringDistortions || cooccurringDistortions.size === 0) continue;
+        
+        // Get top 3 most co-occurring distortions
+        const sortedDistortions = Array.from(cooccurringDistortions.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+        
+        for (const [distortionId, count] of sortedDistortions) {
+          const weight = Math.min(0.5 + (count * 0.1), 1);
+          edges.push({
+            id: `${pattern.id}-${distortionId}-cooccur`,
+            sourceId: pattern.id,
+            targetId: distortionId,
+            type: 'relates',
+            weight,
+            label: 'linked to',
+            createdAt: new Date(),
+          });
         }
       }
     }

@@ -21,6 +21,46 @@ const Canvas: React.FC<CanvasProps> = ({
   const [, setSelectedNode] = useState<D3Node | null>(null);
   const [transform, setTransform] = useState({ k: 1, x: 0, y: 0 });
 
+  // Group nodes by type and filter to top items only
+  const groupNodesByType = (nodes: D3Node[]) => {
+    const groups: { [key: string]: D3Node[] } = {
+      entry: [],
+      emotion: [],
+      theme: [],
+      pattern: [],
+      distortion: []
+    };
+    
+    nodes.forEach(node => {
+      if (groups[node.type]) {
+        groups[node.type].push(node);
+      }
+    });
+    
+    // Sort and filter each group to top 5 items
+    // Scoring based on: frequency (40%), connections (40%), recency (20%)
+    Object.keys(groups).forEach(type => {
+      groups[type] = groups[type]
+        .map(node => {
+          const frequency = (node.metadata?.frequency as number) || 1;
+          const connectionCount = graph.edges.filter(
+            e => e.sourceId === node.id || e.targetId === node.id
+          ).length;
+          const createdAt = node.metadata?.createdAt ? new Date(node.metadata.createdAt as string).getTime() : 0;
+          const recencyScore = createdAt ? (createdAt / Date.now()) : 0;
+          
+          // Calculate importance score
+          const score = (frequency * 0.4) + (connectionCount * 0.4) + (recencyScore * 0.2);
+          
+          return { ...node, importanceScore: score };
+        })
+        .sort((a, b) => (b.importanceScore || 0) - (a.importanceScore || 0))
+        .slice(0, 5); // Keep only top 5
+    });
+    
+    return groups;
+  };
+
   useEffect(() => {
     if (!svgRef.current || !graph) return;
     if (!graph.nodes || !graph.edges) {
@@ -55,73 +95,158 @@ const Canvas: React.FC<CanvasProps> = ({
       });
 
     svg.call(zoom);
+    
+    // Set initial zoom to fit entire canvas
+    const initialScale = 0.75;
+    const initialTransform = d3.zoomIdentity
+      .translate(width * 0.125, height * 0.1)
+      .scale(initialScale);
+    svg.call(zoom.transform as any, initialTransform);
 
-    // Convert to D3 nodes and edges
-    const nodes: D3Node[] = graph.nodes.map(n => ({
-      ...n,
-      x: n.position?.x || Math.random() * width,
-      y: n.position?.y || Math.random() * height,
-    }));
+    // Group nodes by type for organized layout
+    const groupedNodes = groupNodesByType(graph.nodes);
+    
+    // Position nodes in organized columns by type
+    const columnWidth = width / 5;
+    const columns = [
+      { type: 'entry', x: columnWidth * 0.5, label: '📝 Entries' },
+      { type: 'emotion', x: columnWidth * 1.5, label: '💭 Emotions' },
+      { type: 'theme', x: columnWidth * 2.5, label: '💡 Themes' },
+      { type: 'pattern', x: columnWidth * 3.5, label: '🔄 Patterns' },
+      { type: 'distortion', x: columnWidth * 4.5, label: '⚠️ Distortions' }
+    ];
 
-    const edges: D3Edge[] = graph.edges.map(e => ({
+    const nodes: D3Node[] = [];
+    columns.forEach((col) => {
+      const typeNodes = groupedNodes[col.type] || [];
+      if (typeNodes.length === 0) return;
+      const spacing = Math.min(80, height / (typeNodes.length + 1));
+      
+      typeNodes.forEach((node, i) => {
+        nodes.push({
+          ...node,
+          x: col.x,
+          y: 100 + (i + 1) * spacing,
+          fx: col.x, // Fix X position to keep columns
+          fy: undefined
+        });
+      });
+    });
+
+    // Create set of node IDs for efficient lookup
+    const nodeIds = new Set(nodes.map(n => n.id));
+    
+    // Create a map of node type to check adjacency
+    const nodeTypeMap = new Map(nodes.map(n => [n.id, n.type]));
+    
+    // Define adjacent column pairs (only allow connections between adjacent columns)
+    const adjacentTypes: [string, string][] = [
+      ['entry', 'emotion'],
+      ['emotion', 'theme'],
+      ['theme', 'pattern'],
+      ['pattern', 'distortion']
+    ];
+    
+    // Group edges by column pair to ensure balanced distribution
+    const edgesByPair = new Map<string, typeof graph.edges>();
+    
+    graph.edges.forEach(e => {
+      if (!nodeIds.has(e.sourceId) || !nodeIds.has(e.targetId)) return;
+      
+      const sourceType = nodeTypeMap.get(e.sourceId);
+      const targetType = nodeTypeMap.get(e.targetId);
+      
+      // Check which adjacent pair this edge belongs to
+      adjacentTypes.forEach(([type1, type2]) => {
+        if ((sourceType === type1 && targetType === type2) || 
+            (sourceType === type2 && targetType === type1)) {
+          const pairKey = `${type1}-${type2}`;
+          if (!edgesByPair.has(pairKey)) {
+            edgesByPair.set(pairKey, []);
+          }
+          edgesByPair.get(pairKey)!.push(e);
+        }
+      });
+    });
+    
+    // Process each column pair independently to ensure all get connections
+    const selectedEdges: typeof graph.edges = [];
+    const nodeConnectionCounts = new Map<string, number>();
+    
+    adjacentTypes.forEach(([type1, type2]) => {
+      const pairKey = `${type1}-${type2}`;
+      const pairEdges = edgesByPair.get(pairKey) || [];
+      
+      // Sort by weight and take top connections for this pair
+      pairEdges
+        .sort((a, b) => b.weight - a.weight)
+        .forEach(e => {
+          const sourceCount = nodeConnectionCounts.get(e.sourceId) || 0;
+          const targetCount = nodeConnectionCounts.get(e.targetId) || 0;
+          
+          // Allow up to 5 connections per node
+          if (sourceCount < 5 && targetCount < 5) {
+            selectedEdges.push(e);
+            nodeConnectionCounts.set(e.sourceId, sourceCount + 1);
+            nodeConnectionCounts.set(e.targetId, targetCount + 1);
+          }
+        });
+    });
+    
+    const edges: D3Edge[] = selectedEdges.map(e => ({
       ...e,
       source: e.sourceId,
       target: e.targetId,
     }));
 
-    // Create force simulation with stronger separation
+    // Simplified simulation - only allow vertical movement within columns
     const simulation = d3.forceSimulation<D3Node>(nodes)
       .force('link', d3.forceLink<D3Node, D3Edge>(edges)
         .id(d => d.id)
-        .distance(d => 150 + (1 - d.weight) * 150)
-        .strength(d => d.weight * 0.5)
+        .distance(100)
+        .strength(0.3)
       )
-      .force('charge', d3.forceManyBody()
-        .strength(-800)
-        .distanceMax(600)
-      )
-      .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide<D3Node>()
-        .radius(d => ((d.metadata?.size as number) || 1) * 25 + 15)
-        .strength(1)
+        .radius(45)
+        .strength(0.9)
       )
-      .force('x', d3.forceX(width / 2).strength(0.05))
-      .force('y', d3.forceY(height / 2).strength(0.05));
+      .force('y', d3.forceY<D3Node>(d => d.y || height / 2).strength(0.1));
 
-    // Create arrow markers for directed edges
-    svg.append('defs').selectAll('marker')
-      .data(['contains', 'relates', 'triggers', 'temporal'])
-      .enter().append('marker')
-      .attr('id', d => `arrow-${d}`)
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 20)
-      .attr('refY', 0)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
-      .attr('orient', 'auto')
-      .append('path')
-      .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#9ca3af');
+    // Draw column backgrounds
+    g.append('g')
+      .selectAll('rect')
+      .data(columns)
+      .enter().append('rect')
+      .attr('x', d => d.x - columnWidth / 2 + 10)
+      .attr('y', 50)
+      .attr('width', columnWidth - 20)
+      .attr('height', height - 60)
+      .attr('fill', '#f9fafb')
+      .attr('stroke', '#e5e7eb')
+      .attr('stroke-width', 1)
+      .attr('rx', 8);
 
-    // Draw edges
+    // Draw column headers
+    g.append('g')
+      .selectAll('text')
+      .data(columns)
+      .enter().append('text')
+      .attr('x', d => d.x)
+      .attr('y', 30)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '14px')
+      .attr('font-weight', '600')
+      .attr('fill', '#374151')
+      .text(d => d.label);
+
+    // Draw edges (behind nodes)
     const link = g.append('g')
       .selectAll('line')
       .data(edges)
       .enter().append('line')
       .attr('stroke', '#9ca3af')
-      .attr('stroke-width', d => d.weight * 3)
-      .attr('stroke-opacity', 0.6)
-      .attr('marker-end', d => `url(#arrow-${d.type})`);
-
-    // Draw edge labels
-    const edgeLabels = g.append('g')
-      .selectAll('text')
-      .data(edges.filter(e => e.label))
-      .enter().append('text')
-      .attr('font-size', '10px')
-      .attr('fill', '#6b7280')
-      .attr('text-anchor', 'middle')
-      .text(d => d.label || '');
+      .attr('stroke-width', 2.5)
+      .attr('stroke-opacity', 0.6);
 
     // Draw nodes
     const node = g.append('g')
@@ -134,74 +259,100 @@ const Canvas: React.FC<CanvasProps> = ({
         .on('end', dragended)
       );
 
-    // Node circles
+    // Node circles with consistent sizing
     node.append('circle')
-      .attr('r', d => ((d.metadata?.size as number) || 1) * 15)
+      .attr('r', 24)
       .attr('fill', d => (d.metadata?.color as string) || '#6366f1')
       .attr('stroke', '#fff')
-      .attr('stroke-width', 2)
+      .attr('stroke-width', 2.5)
       .style('cursor', 'pointer')
+      .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))')
       .on('click', (event, d) => {
         event.stopPropagation();
         setSelectedNode(d);
         onNodeClick?.(d);
       })
       .on('mouseenter', function() {
-        d3.select(this).attr('stroke-width', 4);
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('r', 28)
+          .attr('stroke-width', 3);
       })
       .on('mouseleave', function() {
-        d3.select(this).attr('stroke-width', 2);
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('r', 24)
+          .attr('stroke-width', 2.5);
       });
 
-    // Node icons/text
+    // Node icons
     node.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '.35em')
-      .attr('font-size', '12px')
-      .attr('fill', '#fff')
+      .attr('font-size', '16px')
       .attr('pointer-events', 'none')
       .text(d => {
         switch (d.type) {
           case 'entry': return '📝';
-          case 'emotion': return '😊';
+          case 'emotion': return '💭';
           case 'theme': return '💡';
           case 'pattern': return '🔄';
           case 'distortion': return '⚠️';
-          default: return '•';
+          default: return '●';
         }
       });
 
-    // Node labels
-    node.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', d => (d.metadata.size || 1) * 15 + 20)
-      .attr('font-size', '12px')
-      .attr('font-weight', '500')
-      .attr('fill', '#1f2937')
-      .attr('pointer-events', 'none')
-      .text(d => d.label.length > 20 ? d.label.substring(0, 20) + '...' : d.label);
+    // Node labels - show full text with wrapping
+    node.each(function(d) {
+      const nodeGroup = d3.select(this);
+      const text = d.label;
+      const maxWidth = 80;
+      const words = text.split(/\s+/);
+      
+      let line = '';
+      let lineNumber = 0;
+      const lineHeight = 12;
+      const y = 38;
+      
+      words.forEach((word) => {
+        const testLine = line + (line ? ' ' : '') + word;
+        if (testLine.length * 6 > maxWidth && line !== '') {
+          // Add the current line
+          nodeGroup.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('y', y + lineNumber * lineHeight)
+            .attr('font-size', '10px')
+            .attr('font-weight', '500')
+            .attr('fill', '#374151')
+            .attr('pointer-events', 'none')
+            .text(line);
+          line = word;
+          lineNumber++;
+          // Limit to 3 lines
+          if (lineNumber >= 3) {
+            return;
+          }
+        } else {
+          line = testLine;
+        }
+      });
+      
+      // Add the last line
+      if (line && lineNumber < 3) {
+        nodeGroup.append('text')
+          .attr('text-anchor', 'middle')
+          .attr('y', y + lineNumber * lineHeight)
+          .attr('font-size', '10px')
+          .attr('font-weight', '500')
+          .attr('fill', '#374151')
+          .attr('pointer-events', 'none')
+          .text(line);
+      }
+    });
 
-    // Frequency badges
-    node.filter(d => !!(d.metadata?.frequency && d.metadata.frequency > 1))
-      .append('circle')
-      .attr('cx', d => ((d.metadata?.size as number) || 1) * 10)
-      .attr('cy', d => -((d.metadata?.size as number) || 1) * 10)
-      .attr('r', 10)
-      .attr('fill', '#ef4444')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 2);
-
-    node.filter(d => !!(d.metadata?.frequency && d.metadata.frequency > 1))
-      .append('text')
-      .attr('x', d => ((d.metadata?.size as number) || 1) * 10)
-      .attr('y', d => -((d.metadata?.size as number) || 1) * 10)
-      .attr('text-anchor', 'middle')
-      .attr('dy', '.35em')
-      .attr('font-size', '10px')
-      .attr('font-weight', 'bold')
-      .attr('fill', '#fff')
-      .attr('pointer-events', 'none')
-      .text(d => String(d.metadata?.frequency || ''));
+    // Frequency badges removed for simplicity
 
     // Update positions on each tick
     simulation.on('tick', () => {
@@ -210,10 +361,6 @@ const Canvas: React.FC<CanvasProps> = ({
         .attr('y1', d => (d.source as D3Node).y!)
         .attr('x2', d => (d.target as D3Node).x!)
         .attr('y2', d => (d.target as D3Node).y!);
-
-      edgeLabels
-        .attr('x', d => ((d.source as D3Node).x! + (d.target as D3Node).x!) / 2)
-        .attr('y', d => ((d.source as D3Node).y! + (d.target as D3Node).y!) / 2);
 
       node
         .attr('transform', d => `translate(${d.x},${d.y})`);
@@ -248,11 +395,20 @@ const Canvas: React.FC<CanvasProps> = ({
 
   return (
     <div className="relative">
+      {/* Info banner */}
+      <div className="absolute top-4 left-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 shadow-sm z-10 max-w-md">
+        <p className="text-xs text-blue-800">
+          <span className="font-semibold">📊 Showing top 5 items per category</span>
+          <br />
+          Ranked by frequency (40%), connections (40%), and recency (20%)
+        </p>
+      </div>
+
       <svg
         ref={svgRef}
         width={width}
         height={height}
-        className="border border-gray-200 rounded-lg bg-gray-50"
+        className="border border-gray-200 rounded-lg bg-white"
       />
       
       {/* Zoom controls */}

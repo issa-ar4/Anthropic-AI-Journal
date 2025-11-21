@@ -221,9 +221,14 @@ export const getInsights = async (
     entries.forEach((e) => {
       if (e.analyses.length > 0) {
         const distortions = e.analyses[0].cognitiveDistortions as any[];
-        distortions.forEach((d: any) => {
-          distortionCounts[d.type] = (distortionCounts[d.type] || 0) + 1;
-        });
+        if (Array.isArray(distortions)) {
+          distortions.forEach((d: any) => {
+            // Filter out invalid distortions
+            if (d && typeof d === 'object' && d.type && typeof d.type === 'string' && d.type.trim() !== '') {
+              distortionCounts[d.type] = (distortionCounts[d.type] || 0) + 1;
+            }
+          });
+        }
       }
     });
 

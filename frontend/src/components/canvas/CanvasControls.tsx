@@ -45,20 +45,22 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 space-y-4">
+    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-5">
+      <h3 className="font-semibold text-gray-900 text-lg">Filters</h3>
+      
       {/* Search */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Search
         </label>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search nodes..."
-            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Search..."
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           />
         </div>
       </div>
@@ -66,19 +68,16 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
       {/* Time Range */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Time Range
+          Time Period
         </label>
         <select
           value={timeRange}
           onChange={(e) => onTimeRangeChange(Number(e.target.value))}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
         >
-          <option value={7}>Last 7 days</option>
-          <option value={14}>Last 2 weeks</option>
+          <option value={7}>Last week</option>
           <option value={30}>Last month</option>
           <option value={90}>Last 3 months</option>
-          <option value={180}>Last 6 months</option>
-          <option value={365}>Last year</option>
           <option value={0}>All time</option>
         </select>
       </div>
@@ -99,12 +98,12 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
                 type="checkbox"
                 checked={selectedNodeTypes.length === 0 || selectedNodeTypes.includes(type)}
                 onChange={() => handleNodeTypeToggle(type)}
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500"
+                className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
               />
-              <span className="text-lg">{icon}</span>
-              <span className="text-sm text-gray-700">{label}</span>
+              <span className="text-base">{icon}</span>
+              <span className="text-sm font-medium text-gray-700">{label}</span>
               <div
-                className="ml-auto w-3 h-3 rounded-full"
+                className="ml-auto w-3 h-3 rounded-full shadow-sm"
                 style={{ backgroundColor: color }}
               />
             </label>
@@ -112,42 +111,14 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
         </div>
       </div>
 
-      {/* Layout Options */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Layout
-        </label>
-        <div className="grid grid-cols-1 gap-2">
-          <button
-            onClick={() => onLayoutChange('force')}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-left"
-          >
-            🌐 Force-Directed
-          </button>
-          <button
-            onClick={() => onLayoutChange('circular')}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-left"
-          >
-            ⭕ Circular
-          </button>
-          <button
-            onClick={() => onLayoutChange('hierarchical')}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-left"
-          >
-            📊 Hierarchical
-          </button>
-        </div>
-      </div>
-
       {/* Legend */}
       <div className="pt-4 border-t border-gray-200">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Legend</h4>
-        <div className="space-y-1 text-xs text-gray-600">
-          <div>• Circle size = frequency/importance</div>
-          <div>• Line thickness = connection strength</div>
-          <div>• Red badge = appears multiple times</div>
-          <div>• Drag nodes to reposition</div>
-          <div>• Scroll to zoom</div>
+        <h4 className="text-sm font-medium text-gray-700 mb-2">How to Use</h4>
+        <div className="space-y-1.5 text-xs text-gray-600">
+          <div>• Click nodes for details</div>
+          <div>• Drag nodes to move them</div>
+          <div>• Scroll to zoom in/out</div>
+          <div>• Filter by type below</div>
         </div>
       </div>
     </div>
