@@ -1,251 +1,108 @@
 # Cognitive Canvas 🧠✨
 
-> An AI-powered journaling tool that transforms your daily reflections into an interactive, visual model of your mind, helping you reason about your emotional patterns and build a more intentional life.
+> An AI-powered journaling platform that transforms your daily reflections into an interactive visual model of your mind, helping you understand emotional patterns and build more intentional habits.
 
-## 🎯 Overview
+## Overview
 
-**Cognitive Canvas** is a production-ready full-stack application that combines journaling with AI-powered cognitive analysis and interactive visualization. By leveraging the Claude API, it analyzes your journal entries to identify emotions, cognitive patterns, and distortions, then visualizes them in an interactive D3.js force-directed graph. This helps you navigate your internal world with clarity and intention.
+Cognitive Canvas is a production-ready full-stack application that combines journaling with AI-powered cognitive analysis and interactive visualization. Using Claude API, it analyzes journal entries to identify emotions, cognitive patterns, and distortions, then visualizes them in an interactive D3.js force-directed graph. The platform includes guided root cause analysis sessions that use Socratic questioning to help users discover the underlying drivers of their emotions.
 
 **Status**: ✅ Production Ready | **Version**: 1.0.0
 
-## 🌟 Key Features
+## Core Features
 
-- **Cognitive Pattern Recognition**: Identifies cognitive distortions and recurring thought patterns
-- **Causal Chain Inference**: Maps connections between triggers, thoughts, emotions, and actions
-- **Interactive Visual Model**: Dynamic graph visualization of your mental landscape
-- **Private & Ethical**: Your data, your control—AI as a supportive guide, not a judge
-- **Actionable Insights**: Empowers you to understand and change behavioral patterns
+**AI-Powered Analysis**: Claude 3.5 Sonnet identifies emotions, cognitive distortions (catastrophizing, black-and-white thinking), recurring themes, and causal chains between triggers, thoughts, and actions.
 
-## ✨ Key Features
+**Interactive Visualization**: D3.js force-directed graph lets you explore your mental landscape through draggable nodes, zoom/pan controls, and interactive filtering by type, date, or search query.
 
-### 🔐 Phase 1: Foundation (Complete)
-- User authentication with JWT
-- Journal entry CRUD operations
-- PostgreSQL database with Prisma ORM
-- Clean, responsive UI with Tailwind CSS
+**Guided Root Cause Analysis**: Conversational AI sessions using the "5 Whys" technique and Socratic questioning to trace surface emotions back to their fundamental causes.
 
-### 🤖 Phase 2: AI Analysis Engine (Complete)
-- Claude 3.5 Sonnet integration
-- Emotion detection and tracking
-- Cognitive pattern recognition
-- Distortion identification (catastrophizing, black-and-white thinking, etc.)
-- Theme extraction across entries
-- Analysis caching (1-hour TTL)
-- Insights dashboard
+**Emotional Weather Map**: Volatility analysis showing which emotions swing most unpredictably, transition patterns revealing how emotions cascade, and baseline comparisons tracking improvement over time.
 
-### 🎨 Phase 3: Interactive Canvas (Complete)
-- D3.js force-directed graph visualization
-- Node types: entries, emotions, themes, patterns
-- Interactive features: drag, zoom, pan, click
-- Timeline view for chronological exploration
-- Filtering by type, date range, search
-- Custom layouts with database persistence
-- Node detail panels
+**Privacy-First**: Your data stays yours with local storage options, no third-party tracking, and optional self-hosted deployment.
 
-### 🚀 Phase 4: Production Polish (Complete)
-- Error boundaries and toast notifications
-- Loading skeletons and empty states
-- Performance optimization hooks (debounce, throttle)
-- Mobile responsive with hamburger menu
-- Security hardening (rate limiting, CORS, Helmet, sanitization)
-- Docker support with multi-stage builds
-- Production configs for 5 platforms
-- Form validation and input sanitization
+## Technology Stack
 
-*For detailed phase information, see [docs/PHASES.md](docs/PHASES.md)*
+**Frontend**: React 18 + TypeScript, D3.js v7, Tailwind CSS, Zustand, Vite  
+**Backend**: Node.js + Express, PostgreSQL + Prisma ORM, JWT authentication, Claude API  
+**DevOps**: Docker, Nginx, Docker Compose, deployment-ready for Railway/Vercel/AWS/DigitalOcean
 
-## 🛠️ Technology Stack
-
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **Visualization**: D3.js v7 for force-directed graphs
-- **UI Library**: Tailwind CSS + custom components
-- **State Management**: Zustand
-- **Build Tool**: Vite
-- **Icons**: Lucide React
-
-### Backend
-- **Runtime**: Node.js with Express
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT with bcrypt
-- **AI Integration**: Anthropic Claude API (3.5 Sonnet)
-- **Security**: Helmet, express-rate-limit, CORS
-
-### DevOps
-- **Containerization**: Docker with multi-stage builds
-- **Web Server**: Nginx (for frontend)
-- **Orchestration**: Docker Compose
-- **Deployment**: Railway, Vercel, AWS, DigitalOcean
-- **Version Control**: Git + GitHub
-
-## 📁 Project Structure
-
-```
-cognitive-canvas/
-├── docs/                       # Documentation and planning
-├── frontend/                   # React application
-│   ├── src/
-│   │   ├── components/        # Reusable UI components
-│   │   ├── features/          # Feature-specific modules
-│   │   ├── hooks/             # Custom React hooks
-│   │   ├── lib/               # Utilities and helpers
-│   │   ├── pages/             # Page components
-│   │   ├── services/          # API clients
-│   │   └── types/             # TypeScript definitions
-│   └── public/                # Static assets
-├── backend/                    # Server application
-│   ├── src/
-│   │   ├── api/               # API routes
-│   │   ├── services/          # Business logic
-│   │   ├── models/            # Data models
-│   │   ├── middleware/        # Express middleware
-│   │   └── utils/             # Helper functions
-│   └── prisma/                # Database schema and migrations
-├── shared/                     # Shared code between frontend/backend
-├── tests/                      # End-to-end tests
-└── scripts/                    # Build and deployment scripts
-```
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- Anthropic API key ([Get one here](https://console.anthropic.com/))
-- Docker (optional, for containerized deployment)
+- Node.js 18+, PostgreSQL 14+, Anthropic API key ([get one here](https://console.anthropic.com/))
 
-### Local Development Setup
-
+### Local Development
 ```bash
-# 1. Clone the repository
+# 1. Clone and navigate
 git clone https://github.com/yourusername/cognitive-canvas.git
 cd cognitive-canvas
 
-# 2. Set up environment variables
-cp .env.example .env
-# Edit .env and add your Anthropic API key
-
-# 3. Install dependencies and set up database
+# 2. Backend setup
 cd backend
 npm install
-npx prisma migrate dev
+# Create .env with DATABASE_URL, JWT_SECRET, ANTHROPIC_API_KEY
+npx prisma migrate deploy
 npx prisma generate
+npm run dev
 
+# 3. Frontend setup (new terminal)
 cd ../frontend
 npm install
-
-# 4. Start the development servers
-# Terminal 1 - Backend (from backend/)
+# Create .env with VITE_API_URL=http://localhost:5000
 npm run dev
 
-# Terminal 2 - Frontend (from frontend/)
-npm run dev
-
-# 5. Access the application
-# Frontend: http://localhost:5173
-# Backend API: http://localhost:3000
+# Access at http://localhost:3000 (frontend) and http://localhost:5000 (API)
 ```
 
-### Environment Variables
-
-**Backend (.env)**:
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/cognitive_canvas"
-JWT_SECRET="your-super-secret-jwt-key-change-this"
-ANTHROPIC_API_KEY="sk-ant-your-api-key-here"
-NODE_ENV="development"
-PORT=3000
-FRONTEND_URL="http://localhost:5173"
-```
-
-**Frontend (.env)**:
-```env
-VITE_API_URL=http://localhost:3000
-```
-
-### Docker Deployment (Easiest)
-
+### Docker Deployment
 ```bash
 # 1. Configure environment
 cp .env.docker.example .env
 # Edit .env with your Anthropic API key
 
-# 2. Start all services
+# 2. Start services
 docker-compose up -d
-
-# 3. Run database migrations
 docker-compose exec backend npx prisma migrate deploy
 
-# 4. Access the application
-# Frontend: http://localhost:80
-# Backend API: http://localhost:3000
+# Access at http://localhost
 ```
 
-### Production Deployment
+## Project Structure
 
-For production deployment guides (Railway, Vercel, AWS, DigitalOcean), see [DEPLOYMENT.md](DEPLOYMENT.md).
+```
+cognitive-canvas/
+├── frontend/          # React + TypeScript UI
+│   ├── components/   # Reusable UI components
+│   ├── pages/        # Route pages
+│   └── services/     # API clients
+├── backend/          # Express API
+│   ├── api/          # Routes and controllers
+│   ├── services/     # Claude integration, canvas logic
+│   └── prisma/       # Database schema
+└── docs/             # Extended documentation
+```
 
-## 🎨 How It Works
+## How It Works
 
-1. **Journal**: Write your daily reflections in a clean, distraction-free interface
-2. **Analyze**: Claude processes your entry, identifying emotions, patterns, and cognitive distortions
-3. **Visualize**: Your "Cognitive Canvas" updates with new nodes and connections in an interactive D3.js graph
-4. **Explore**: Navigate your mental landscape, discovering insights about yourself through visual connections
-5. **Grow**: Use these insights to build more intentional habits and thought patterns
+1. **Journal**: Write reflections in a distraction-free interface
+2. **Analyze**: Claude identifies emotions, patterns, and cognitive distortions
+3. **Visualize**: Interactive graph updates with nodes and connections
+4. **Explore**: Navigate your mental landscape through visual relationships
+5. **Discover**: Use guided sessions to trace emotions to root causes
+6. **Grow**: Apply insights to build intentional thought patterns
 
-## 🏆 Innovation Highlights
+## Key Innovation
 
-### Beyond a Chatbot
-- Transforms unstructured text into structured cognitive models
-- Persistent, evolving visualization of mental patterns
-- Not just recording thoughts—actively mapping them
+Unlike typical journaling apps or chatbots, Cognitive Canvas creates a persistent, evolving visualization of your cognitive model. Each entry adds context to your mental landscape, revealing patterns invisible in isolated entries. The Emotional Weather Map shows volatility and transitions—not just what you felt, but how chaotically and in what sequences.
 
-### Creative Claude API Usage
-- **Pattern Recognition**: Identifies cognitive distortions (catastrophizing, black-and-white thinking)
-- **Causal Inference**: Proposes connections between triggers, emotions, and actions
-- **Visual Model Generation**: Analysis drives interactive graph visualization
+## Documentation
 
-### Human-Centered Design
-- Addresses the universal struggle of self-understanding
-- Provides actionable clarity for emotional regulation
-- Private, non-judgmental, user-controlled experience
+For detailed technical documentation, architecture diagrams, deployment guides, API references, and development workflows, see [EXTENDED_SUMMARY.md](./EXTENDED_SUMMARY.md).
 
-## 📊 Success Metrics
+## License
 
-- User engagement: Average entries per Day
-- Pattern discovery: Number of insights generated
-- User satisfaction: Self-reported improvements in self-awareness
-- Technical performance: Response time, accuracy of pattern detection
+MIT License - See LICENSE file for details.
 
-## 📚 Documentation
+## Contributing
 
-- **[README.md](README.md)** - This file (overview and setup)
-- **[docs/PHASES.md](docs/PHASES.md)** - Detailed phase breakdown and implementation
-- **[docs/ROADMAP.md](docs/ROADMAP.md)** - Current status and next steps
-- **[docs/FUTURE.md](docs/FUTURE.md)** - Future enhancements and ideas
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guides
-
-## 🤝 Contributing
-
-This project was developed for the Anthropic Claude API Hackathon. See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for contribution guidelines.
-
-## 📜 License
-
-MIT License - See LICENSE file for details
-
-## 🔒 Privacy & Ethics
-
-- All data is encrypted at rest and in transit
-- Users have complete control over their data
-- AI serves as a supportive guide, not a diagnostic tool
-- No data sharing with third parties
-- Right to export and delete all personal data
-
-## 📧 Contact
-
-For questions or feedback, please open an issue or contact issa.alrawwash@mail.utoronto.ca.
-
----
-
-*Cognitive Canvas: Making your inner world more navigable, one entry at a time.*
-# Anthropic-AI-Journal
+We welcome contributions! This is a personal project open to community improvements. Check EXTENDED_SUMMARY.md for architecture details before contributing.
