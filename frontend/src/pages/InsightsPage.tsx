@@ -1,13 +1,19 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { analysisService } from '../services/analysisService';
 import { Loader2, TrendingUp, Brain, AlertCircle } from 'lucide-react';
 import EmotionalTrendsChart from '../components/analysis/EmotionalTrendsChart';
 import PatternList from '../components/analysis/PatternList';
+import InsightsSummary from '../components/analysis/InsightsSummary';
+import ActionableRecommendations from '../components/analysis/ActionableRecommendations';
+import DateRangeSelector from '../components/analysis/DateRangeSelector';
 
 export default function InsightsPage() {
+  const [dateRange, setDateRange] = useState(30);
+
   const { data: insights, isLoading: insightsLoading } = useQuery({
-    queryKey: ['insights'],
-    queryFn: () => analysisService.getInsights(30),
+    queryKey: ['insights', dateRange],
+    queryFn: () => analysisService.getInsights(dateRange),
   });
 
   const { data: patternsData, isLoading: patternsLoading } = useQuery({
@@ -62,10 +68,15 @@ export default function InsightsPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Insights</h1>
-        <p className="text-gray-600 text-lg">
-          AI-powered analysis of your journal entries over the past 30 days
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Insights</h1>
+            <p className="text-gray-600 text-lg">
+              AI-powered analysis of your journal entries
+            </p>
+          </div>
+          <DateRangeSelector selectedRange={dateRange} onRangeChange={setDateRange} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
@@ -112,6 +123,14 @@ export default function InsightsPage() {
           </div>
         </div>
       </div>
+
+      {/* AI-Generated Summary */}
+      {insights && <InsightsSummary data={insights} />}
+
+      {/* Actionable Recommendations */}
+      {insights && patternsData && (
+        <ActionableRecommendations data={insights} patterns={patternsData.patterns} />
+      )}
 
       {/* Emotional Trends */}
       {insights && <EmotionalTrendsChart data={insights} />}
