@@ -3,17 +3,22 @@ import {
   AnalysisResult,
 } from '../types/analysis.types';
 
-// Check if API key is configured
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error('❌ ANTHROPIC_API_KEY is not configured in environment variables');
-  throw new Error('Anthropic API key is required but not configured');
+// Lazy initialization of Anthropic client
+let anthropic: Anthropic | null = null;
+
+function getAnthropicClient(): Anthropic {
+  if (!anthropic) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('❌ ANTHROPIC_API_KEY is not configured in environment variables');
+      throw new Error('Anthropic API key is required but not configured');
+    }
+    anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+    console.log('✅ Anthropic SDK initialized successfully');
+  }
+  return anthropic;
 }
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-console.log('✅ Anthropic SDK initialized successfully');
 
 export class ClaudeService {
   /**
@@ -26,7 +31,7 @@ export class ClaudeService {
   ): Promise<AnalysisResult> {
     const prompt = this.buildAnalysisPrompt(content, title);
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       temperature: 0.3,
@@ -85,7 +90,7 @@ Return your analysis in JSON format:
   ]
 }`;
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       temperature: 0.3,
@@ -226,7 +231,7 @@ Important:
       content: msg.content,
     }));
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropicClient().messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1500,
       temperature: 0.7,
