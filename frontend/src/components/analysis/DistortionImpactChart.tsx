@@ -13,9 +13,10 @@ interface DistortionImpactChartProps {
 }
 
 export default function DistortionImpactChart({ data }: DistortionImpactChartProps) {
-  // Sort by average sentiment (most negative first) and convert to positive values for display
+  // Sort by average sentiment (most negative first), take top 5, and convert to positive values for display
   const sortedData = [...data]
     .sort((a, b) => a.avgSentiment - b.avgSentiment)
+    .slice(0, 5) // Only take top 5 most impactful distortions
     .map(item => ({
       ...item,
       displayValue: Math.abs(item.avgSentiment) // Convert to positive for bar display
@@ -96,7 +97,7 @@ export default function DistortionImpactChart({ data }: DistortionImpactChartPro
             </div>
             Cognitive Distortion Impact
           </h3>
-          <p className="text-sm text-gray-600 mt-1">Which patterns hurt you the most?</p>
+          <p className="text-sm text-gray-600 mt-1">Top 5 patterns that hurt you the most</p>
         </div>
         {mostImpactful && (
           <div className="text-right">
@@ -232,8 +233,8 @@ export default function DistortionImpactChart({ data }: DistortionImpactChartPro
                 <div>
                   <p className="text-sm font-semibold text-gray-900 mb-1">Total Patterns</p>
                   <p className="text-xs text-gray-600">
-                    Detected {sortedData.length} different cognitive distortion types 
-                    across your entries
+                    Showing top 5 of {data.length} different cognitive distortion types 
+                    detected across your entries
                   </p>
                 </div>
               </div>
