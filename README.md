@@ -2,6 +2,8 @@
 
 > An AI-powered journaling platform that transforms your daily reflections into an interactive visual model of your mind, helping you understand emotional patterns and build more intentional habits.
 
+## 🏆 2nd Place Winner - Anthropic Hackathon 2025
+
 ## Overview
 
 Cognitive Canvas is a production-ready full-stack application that combines journaling with AI-powered cognitive analysis and interactive visualization. Using Claude API, it analyzes journal entries to identify emotions, cognitive patterns, and distortions, then visualizes them in an interactive D3.js force-directed graph. The platform includes guided root cause analysis sessions that use Socratic questioning to help users discover the underlying drivers of their emotions.
