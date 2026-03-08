@@ -11,10 +11,15 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
-  console.error('Error:', err);
-
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal server error';
+
+  // Only log full stack traces for server errors; keep client errors quiet
+  if (statusCode >= 500) {
+    console.error('Error:', err);
+  } else if (process.env.NODE_ENV === 'development') {
+    console.warn(`[${statusCode}] ${message}`);
+  }
 
   res.status(statusCode).json({
     error: message,
