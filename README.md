@@ -125,3 +125,4 @@ MIT License - See LICENSE file for details.
 ## Contributing
 
 We welcome contributions! This is a personal project open to community improvements. Check EXTENDED_SUMMARY.md for architecture details before contributing.
+# Inkling
